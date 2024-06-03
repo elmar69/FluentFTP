@@ -1,20 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+
 using FluentFTP.Xunit.Docker;
-using FluentFTP.Xunit.Attributes;
 using FluentFTP.Tests.Integration.System;
+using FluentFTP.Model.Functions;
 
 namespace FluentFTP.Tests.Integration.Tests {
 
 	internal class ConnectTests : IntegrationTestSuite {
 
-		public ConnectTests(DockerFtpServer fixture) : base(fixture) { }
+		public ConnectTests(DockerFtpServer fixture, UseStream stream) : base(fixture, stream) { }
 
 
 		/// <summary>
@@ -37,8 +33,8 @@ namespace FluentFTP.Tests.Integration.Tests {
 
 
 		public async Task ConnectAsync() {
-			using var ftpClient = GetClient();
-			await ftpClient.ConnectAsync();
+			using var ftpClient = await GetAsyncClient();
+			await ftpClient.Connect();
 			// Connect without error => pass
 			Assert.True(true);
 		}
@@ -60,22 +56,22 @@ namespace FluentFTP.Tests.Integration.Tests {
 
 
 		public async Task AutoConnectAsync() {
-			using var ftpClient = GetClient();
-			var profile = await ftpClient.AutoConnectAsync();
+			using var ftpClient = await GetAsyncClient();
+			var profile = await ftpClient.AutoConnect();
 			Assert.NotNull(profile);
 		}
 
 
 		public void AutoDetect() {
 			using var ftpClient = GetClient();
-			var profiles = ftpClient.AutoDetect();
+			var profiles = ftpClient.AutoDetect(new FtpAutoDetectConfig());
 			Assert.NotEmpty(profiles);
 		}
 
 
 		public async Task AutoDetectAsync() {
-			using var ftpClient = GetClient();
-			var profiles = await ftpClient.AutoDetectAsync(false);
+			using var ftpClient = await GetAsyncClient();
+			var profiles = await ftpClient.AutoDetect(new FtpAutoDetectConfig());
 			Assert.NotEmpty(profiles);
 		}
 

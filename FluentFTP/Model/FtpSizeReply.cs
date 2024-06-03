@@ -3,11 +3,21 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace FluentFTP {
-	internal class FtpSizeReply {
 
+	/// <summary>
+	/// Reply from a SIZE command
+	/// </summary>
+	public class FtpSizeReply {
+
+		/// <summary>
+		/// The returned file size
+		/// </summary>
 		public long FileSize { get; set; }
 
-		public FtpReply Reply;
+		/// <summary>
+		/// The reply we got
+		/// </summary>
+		public FtpReply Reply { get; set; }
 
 	}
 }

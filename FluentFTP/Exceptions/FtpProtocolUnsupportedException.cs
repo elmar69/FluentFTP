@@ -1,16 +1,20 @@
 ﻿using System;
-#if !CORE
+#if NETFRAMEWORK
 using System.Runtime.Serialization;
 #endif
 
-namespace FluentFTP {
-#if !CORE
+namespace FluentFTP.Exceptions {
+
+	/// <summary>
+	/// FtpProtocolUnsupportedException
+	/// </summary>
+#if NETFRAMEWORK
 	[Serializable]
 #endif
 	public class FtpProtocolUnsupportedException : FtpException {
 
 		/// <summary>
-		/// Custom error message
+		/// FtpProtocolUnsupportedException
 		/// </summary>
 		/// <param name="message">Error message</param>
 		public FtpProtocolUnsupportedException(string message)

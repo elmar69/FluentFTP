@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using FluentFTP;
+using FluentFTP.Client.BaseClient;
 using FluentFTP.Helpers;
 
 namespace Examples {
@@ -15,7 +16,7 @@ namespace Examples {
 		/// Adds a custom file listing parser
 		/// </summary>
 		public static void AddCustomParser(FtpClient client) {
-			client.ListingCustomParser = ParseUnixList;
+			client.Config.ListingCustomParser = ParseUnixList;
 		}
 
 		/// <summary>
@@ -24,16 +25,16 @@ namespace Examples {
 		/// <param name="buf">A line from the listing</param>
 		/// <param name="capabilities">Server capabilities</param>
 		/// <returns>FtpListItem if the item is able to be parsed</returns>
-		private static FtpListItem ParseUnixList(string buf, List<FtpCapability> capabilities, FtpClient client) {
+		private static FtpListItem ParseUnixList(string buf, List<FtpCapability> capabilities, BaseFtpClient client) {
 			var item = new FtpListItem();
 			Match m = null;
 			var regex =
 				@"(?<permissions>[\w-]{10})\s+" +
-				@"(?<objectcount>\d+)\s+" +
-				@"(?<user>[\w\d]+)\s+" +
-				@"(?<group>[\w\d]+)\s+" +
-				@"(?<size>\d+)\s+" +
-				@"(?<modify>\w+\s+\d+\s+\d+:\d+|\w+\s+\d+\s+\d+)\s+" +
+				@"(?<objectcount>[0-9]+)\s+" +
+				@"(?<user>[\w0-9]+)\s+" +
+				@"(?<group>[\w0-9]+)\s+" +
+				@"(?<size>[0-9]+)\s+" +
+				@"(?<modify>\w+\s+[0-9]+\s+[0-9]+:[0-9]+|\w+\s+[0-9]+\s+[0-9]+)\s+" +
 				@"(?<name>.*)$";
 
 			if (!(m = Regex.Match(buf, regex, RegexOptions.IgnoreCase)).Success) {
@@ -65,7 +66,7 @@ namespace Examples {
 			////
 			// Ignore the Modify times sent in LIST format for files
 			// when the server has support for the MDTM command
-			// because they will never be as accurate as what can be had 
+			// because they will never be as accurate as what can be had
 			// by using the MDTM command. MDTM does not work on directories
 			// so if a modify time was parsed from the listing we will try
 			// to convert it to a DateTime object and use it for directories.

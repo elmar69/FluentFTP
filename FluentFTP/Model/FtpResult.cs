@@ -12,22 +12,22 @@ namespace FluentFTP {
 		/// <summary>
 		/// Returns true if the file was downloaded, false if it was uploaded.
 		/// </summary>
-		public bool IsDownload;
+		public bool IsDownload { get; set; }
 
 		/// <summary>
 		/// Gets the type of file system object.
 		/// </summary>
-		public FtpObjectType Type;
+		public FtpObjectType Type { get; set; }
 
 		/// <summary>
-		/// Gets the size of the file.
+		/// Gets the size of the file, or 0 if unknown.
 		/// </summary>
-		public long Size;
+		public long Size { get; set; }
 
 		/// <summary>
 		/// Gets the name and extension of the file.
 		/// </summary>
-		public string Name;
+		public string Name { get; set; }
 
 		/// <summary>
 		/// Stores the absolute remote path of the current file being transferred.
@@ -42,27 +42,27 @@ namespace FluentFTP {
 		/// <summary>
 		/// Gets the error that occurring during transferring this file, if any.
 		/// </summary>
-		public Exception Exception;
+		public Exception Exception { get; set; }
 
 		/// <summary>
 		/// Returns true if the file was downloaded/uploaded, or the file was already existing with the same file size.
 		/// </summary>
-		public bool IsSuccess;
+		public bool IsSuccess { get; set; }
 
 		/// <summary>
 		/// Was the file skipped?
 		/// </summary>
-		public bool IsSkipped;
+		public bool IsSkipped { get; set; }
 
 		/// <summary>
 		/// Was the file skipped due to failing the rule condition?
 		/// </summary>
-		public bool IsSkippedByRule;
+		public bool IsSkippedByRule { get; set; }
 
 		/// <summary>
 		/// Was there an error during transfer? You can read the Exception property for more details.
 		/// </summary>
-		public bool IsFailed;
+		public bool IsFailed { get; set; }
 
 		/// <summary>
 		/// Convert this result to a FTP list item.
@@ -76,6 +76,9 @@ namespace FluentFTP {
 			};
 		}
 
+		/// <summary>
+		/// Human readable results
+		/// </summary>
 		public override string ToString() {
 			var sb = new StringBuilder();
 
@@ -114,6 +117,22 @@ namespace FluentFTP {
 			}
 
 			return sb.ToString();
+		}
+
+		/// <summary>
+		/// Convert this object to a FtpStatus enum for quick comparison.
+		/// </summary>
+		public FtpStatus ToStatus() {
+			if (IsSkipped) {
+				return FtpStatus.Skipped;
+			}
+			else if (IsFailed) {
+				return FtpStatus.Failed;
+			}
+			else if (IsSuccess) {
+				return FtpStatus.Success;
+			}
+			return FtpStatus.Failed;
 		}
 
 	}

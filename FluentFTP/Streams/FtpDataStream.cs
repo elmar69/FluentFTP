@@ -1,13 +1,7 @@
 ﻿using System;
-using System.Reflection;
-using System.Text.RegularExpressions;
-using System.Diagnostics;
 using System.Threading;
-
-#if ASYNC
 using System.Threading.Tasks;
-
-#endif
+using FluentFTP.Client.BaseClient;
 
 namespace FluentFTP {
 	/// <summary>
@@ -25,7 +19,7 @@ namespace FluentFTP {
 			set => m_commandStatus = value;
 		}
 
-		private FtpClient m_control = null;
+		private BaseFtpClient m_control = null;
 
 		/// <summary>
 		/// Gets or sets the control connection for this data stream. Setting
@@ -33,7 +27,7 @@ namespace FluentFTP {
 		/// connection is made to the server to carry out the task. This ensures
 		/// that multiple streams can be opened simultaneously.
 		/// </summary>
-		public FtpClient ControlConnection {
+		public BaseFtpClient ControlConnection {
 			get => m_control;
 			set => m_control = value;
 		}
@@ -69,7 +63,19 @@ namespace FluentFTP {
 			return read;
 		}
 
-#if ASYNC
+#if NETSTANDARD2_1 || NET5_0_OR_GREATER
+		/// <summary>
+		/// Reads data off the stream
+		/// </summary>
+		/// <param name="buffer">The buffer to read into</param>
+		/// <returns>The number of bytes read</returns>
+		public override int Read(Span<byte> buffer) {
+			var read = base.Read(buffer);
+			m_position += read;
+			return read;
+		}
+#endif
+
 		/// <summary>
 		/// Reads data off the stream asynchronously
 		/// </summary>
@@ -80,6 +86,19 @@ namespace FluentFTP {
 		/// <returns>The number of bytes read</returns>
 		public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken token) {
 			int read = await base.ReadAsync(buffer, offset, count, token);
+			m_position += read;
+			return read;
+		}
+
+#if NETSTANDARD2_1 || NET5_0_OR_GREATER
+		/// <summary>
+		/// Reads data off the stream asynchronously
+		/// </summary>
+		/// <param name="buffer">The buffer to read into</param>
+		/// <param name="token">The cancellation token for this task</param>
+		/// <returns>The number of bytes read</returns>
+		public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken token) {
+			int read = await base.ReadAsync(buffer, token);
 			m_position += read;
 			return read;
 		}
@@ -96,7 +115,17 @@ namespace FluentFTP {
 			m_position += count;
 		}
 
-#if ASYNC
+#if NETSTANDARD2_1 || NET5_0_OR_GREATER
+		/// <summary>
+		/// Writes data to the stream
+		/// </summary>
+		/// <param name="buffer">The buffer to write to the stream</param>
+		public override void Write(ReadOnlySpan<byte> buffer) {
+			base.Write(buffer);
+			m_position += buffer.Length;
+		}
+#endif
+
 		/// <summary>
 		/// Writes data to the stream asynchronously
 		/// </summary>
@@ -107,6 +136,17 @@ namespace FluentFTP {
 		public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token) {
 			await base.WriteAsync(buffer, offset, count, token);
 			m_position += count;
+		}
+
+#if NETSTANDARD2_1 || NET5_0_OR_GREATER
+		/// <summary>
+		/// Writes data to the stream asynchronously
+		/// </summary>
+		/// <param name="buffer">The buffer to write to the stream</param>
+		/// <param name="token">The <see cref="CancellationToken"/> for this task</param>
+		public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken token) {
+			await base.WriteAsync(buffer, token);
+			m_position += buffer.Length;
 		}
 #endif
 
@@ -128,14 +168,14 @@ namespace FluentFTP {
 		}
 
 		/// <summary>
-		/// Closes the connection and reads the server's reply
+		/// Closes the connection and reads (and discards) the server's reply
 		/// </summary>
-		public new FtpReply Close() {
+		public new void Close() {
 			base.Close();
 
 			try {
 				if (ControlConnection != null) {
-					return ControlConnection.CloseDataStream(this);
+					((IInternalFtpClient)ControlConnection).CloseDataStreamInternal(this);
 				}
 			}
 			finally {
@@ -143,26 +183,47 @@ namespace FluentFTP {
 				m_control = null;
 			}
 
-			return new FtpReply();
+			return;
+		}
+
+		/// <summary>
+		/// Closes the connection and reads (and discards) the server's reply
+		/// </summary>
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+		public override async ValueTask CloseAsync(CancellationToken token = default(CancellationToken)) {
+#else
+		public override async Task CloseAsync(CancellationToken token = default(CancellationToken)) {
+#endif
+			await base.CloseAsync(token);
+
+			try {
+				if (ControlConnection != null) {
+					await ((IInternalFtpClient)ControlConnection).CloseDataStreamInternal(this, token);
+				}
+			}
+			finally {
+				m_commandStatus = new FtpReply();
+				m_control = null;
+			}
+
+			return;
 		}
 
 		/// <summary>
 		/// Creates a new data stream object
 		/// </summary>
 		/// <param name="conn">The control connection to be used for carrying out this operation</param>
-		public FtpDataStream(FtpClient conn) : base(conn) {
-			if (conn == null) {
-				throw new ArgumentException("The control connection cannot be null.");
-			}
-
-			ControlConnection = conn;
+		public FtpDataStream(BaseFtpClient conn) : base(conn) {
+			ControlConnection = conn ?? throw new ArgumentException("The control connection cannot be null.");
 
 			// always accept certificate no matter what because if code execution ever
 			// gets here it means the certificate on the control connection object being
 			// cloned was already accepted.
-			ValidateCertificate += new FtpSocketStreamSslValidation(delegate(FtpSocketStream obj, FtpSslValidationEventArgs e) { e.Accept = true; });
+			ValidateCertificate += new FtpSocketStreamSslValidation(delegate (FtpSocketStream obj, FtpSslValidationEventArgs e) { e.Accept = true; });
 
 			m_position = 0;
+
+			IsControlConnection = false;
 		}
 
 		/// <summary>
@@ -171,9 +232,14 @@ namespace FluentFTP {
 		~FtpDataStream() {
 			// Fix: Hard catch and suppress all exceptions during disposing as there are constant issues with this method
 			try {
-				Dispose(false);
+				if (Client is AsyncFtpClient) {
+					DisposeAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+				}
+				else {
+					Dispose();
+				}
 			}
-			catch (Exception ex) {
+			catch {
 			}
 		}
 	}

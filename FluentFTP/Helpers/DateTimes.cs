@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Globalization;
 using System.Text;
+using FluentFTP.Client.BaseClient;
 
 namespace FluentFTP.Helpers {
 	/// <summary>
-	/// Extension methods related to FTP tasks
+	/// Extension methods related to FTP date time values
 	/// </summary>
 	public static class DateTimes {
 
@@ -12,21 +13,23 @@ namespace FluentFTP.Helpers {
 		/// Converts the FTP date string into a DateTime object, without performing any timezone conversion.
 		/// </summary>
 		/// <param name="dateString">The date string</param>
+		/// <param name="client">The client object this is done for</param>
 		/// <param name="formats">Date formats to try parsing the value from (eg "yyyyMMddHHmmss")</param>
+		/// <param name="styles">The <see cref="DateTimeStyles"/> used when parsing</param>
 		/// <returns>A <see cref="DateTime"/> object representing the date, or <see cref="DateTime.MinValue"/> if there was a problem</returns>
-		public static DateTime ParseFtpDate(this string dateString, FtpClient client, string[] formats = null) {
+		public static DateTime ParseFtpDate(this string dateString, BaseFtpClient client, string[] formats = null, DateTimeStyles styles = DateTimeStyles.None) {
 			if (formats == null) {
 				formats = FtpDateFormats;
 			}
 
 			// parse the raw timestamp without performing any timezone conversions
 			try {
-				DateTime date = DateTime.ParseExact(dateString, FtpDateFormats, client.ListingCulture.DateTimeFormat, DateTimeStyles.None); // or client.ListingCulture.DateTimeFormat
+				DateTime date = DateTime.ParseExact(dateString, FtpDateFormats, client.Config.ListingCulture.DateTimeFormat, styles); // or client.ListingCulture.DateTimeFormat
 
 				return date;
 			}
 			catch (FormatException) {
-				client.LogStatus(FtpTraceLevel.Error, "Failed to parse date string '" + dateString + "'");
+				((IInternalFtpClient)client).LogStatus(FtpTraceLevel.Error, "Failed to parse date string '" + dateString + "'");
 			}
 
 			return DateTime.MinValue;

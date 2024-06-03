@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text.RegularExpressions;
+using FluentFTP.Client.BaseClient;
 
 namespace FluentFTP.Helpers {
 	/// <summary>
@@ -20,7 +21,7 @@ namespace FluentFTP.Helpers {
 		/// <param name="ftppath"></param>
 		/// <returns></returns>
 		public static bool IsFtpRootDirectory(this string ftppath) {
-			return ftppath == "." || ftppath == "./" || ftppath == "/";
+			return ftppath is "." or "./" or "/";
 		}
 
 		/// <summary>
@@ -107,7 +108,7 @@ namespace FluentFTP.Helpers {
 		/// <param name="path">The full path to the file</param>
 		/// <returns>The file name</returns>
 		public static string GetFtpFileName(this string path) {
-			var tpath = path == null ? null : path;
+			var tpath = path;
 			var lastslash = -1;
 
 			// no change in path
@@ -156,14 +157,11 @@ namespace FluentFTP.Helpers {
 		/// <summary>
 		/// Get the full path of a given FTP Listing entry
 		/// </summary>
-		public static void CalculateFullFtpPath(this FtpListItem item, FtpClient client, string path)
-		{
+		public static void CalculateFullFtpPath(this FtpListItem item, BaseFtpClient client, string path) {
 			// EXIT IF NO DIR PATH PROVIDED
-			if (path == null)
-			{
+			if (path == null) {
 				// check if the path is absolute
-				if (IsAbsolutePath(item.Name))
-				{
+				if (IsAbsolutePath(item.Name)) {
 					item.FullName = item.Name;
 					item.Name = item.Name.GetFtpFileName();
 				}
@@ -172,48 +170,39 @@ namespace FluentFTP.Helpers {
 			}
 
 			// ONLY IF DIR PATH PROVIDED
-			//this.client.LogStatus(item.Name);
+			//this.((IInternalFtpClient)client).LogStatus(item.Name);
 
 			// remove globbing/wildcard from path
-			if (path.GetFtpFileName().Contains("*"))
-			{
+			if (path.GetFtpFileName().Contains("*")) {
 				path = path.GetFtpDirectoryName();
 			}
 
-			if (path.Length == 0)
-			{
-				path = client.GetWorkingDirectory();
+			if (path.Length == 0) {
+				path = ((IInternalFtpClient)client).GetWorkingDirectoryInternal();
 			}
 
-			if (item.Name != null)
-			{
+			if (item.Name != null) {
 				// absolute path? then ignore the path input to this method.
-				if (IsAbsolutePath(item.Name))
-				{
+				if (IsAbsolutePath(item.Name)) {
 					item.FullName = item.Name;
 					item.Name = item.Name.GetFtpFileName();
 				}
-				else if (path != null)
-				{
+				else if (path != null) {
 					item.FullName = path.GetFtpPath(item.Name); //.GetFtpPathWithoutGlob();
 				}
-				else
-				{
-					client.LogStatus(FtpTraceLevel.Warn, "Couldn't determine the full path of this object: " +
+				else {
+					((IInternalFtpClient)client).LogStatus(FtpTraceLevel.Warn, "Couldn't determine the full path of this object: " +
 														 Environment.NewLine + item.ToString());
 				}
 			}
 
 			// if a link target is set and it doesn't include an absolute path
 			// then try to resolve it.
-			if (item.LinkTarget != null && !item.LinkTarget.StartsWith("/"))
-			{
-				if (item.LinkTarget.StartsWith("./"))
-				{
+			if (item.LinkTarget != null && !item.LinkTarget.StartsWith("/")) {
+				if (item.LinkTarget.StartsWith("./")) {
 					item.LinkTarget = path.GetFtpPath(item.LinkTarget.Remove(0, 2)).Trim();
 				}
-				else
-				{
+				else {
 					item.LinkTarget = path.GetFtpPath(item.LinkTarget).Trim();
 				}
 			}

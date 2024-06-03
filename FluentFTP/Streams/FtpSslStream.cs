@@ -1,187 +1,239 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System;
 using System.IO;
-#if !CORE
 using System.Linq;
 using System.Net.Security;
-using System.Runtime.ConstrainedExecution;
+using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
 
-#endif
-
-namespace FluentFTP {
-#if !CORE
+namespace FluentFTP.Streams {
 	/// <summary>
-	/// .NET SslStream doesn't close TLS connection properly.
-	/// It does not send the close_notify alert before closing the connection.
-	/// FtpSslStream uses unsafe code to do that.
-	/// This is required when we want to downgrade the connection to plaintext using CCC command.
-	/// Thanks to Neco @ https://stackoverflow.com/questions/237807/net-sslstream-doesnt-close-tls-connection-properly/22626756#22626756
+	/// FtpSslStream is an SslStream that properly sends a close_notify message when closing
+	/// the connection. This is required per RFC 5246 to avoid truncation attacks.
+	/// For more information, see https://tools.ietf.org/html/rfc5246#section-7.2.1
+	///
+	/// Inspired by: https://stackoverflow.com/questions/237807/net-sslstream-doesnt-close-tls-connection-properly/22626756#22626756
+	///
+	/// See: https://learn.microsoft.com/en-us/windows/win32/secauthn/shutting-down-an-schannel-connection
+	/// See: https://learn.microsoft.com/en-us/windows/win32/secauthn/using-sspi-with-a-windows-sockets-client?source=recommendations
+	///
+	/// Note:
+	/// Here is a quote from: https://github.com/dotnet/standard/issues/598#issuecomment-352148072
+	/// "The SslStream.ShutdownAsync API was added to .NET Core 2.0. It was also added to .NET Framework 4.7.
+	/// Logically, since .NET Core 2.0 and .NET Framework 4.7.1 are aligned with NETStandard2.0, it could
+	/// have been part of the NETStandard20 definition. But it wasn't due to when the NETStandard2.0 spec
+	/// was originally designed."
+	/// 
+	/// Note:
+	/// Microsoft says we should not override close():
+	/// "Place all cleanup logic for your stream object in Dispose(Boolean). Do not override Close()."
+	/// See: https://learn.microsoft.com/en-us/dotnet/api/system.io.stream.dispose?view=net-7.0
+	/// But: We recently changed the below logic due to issue #1107, which solved the problem in part
 	/// </summary>
-	internal class FtpSslStream : SslStream {
-		private bool sentCloseNotify = false;
+	public class FtpSslStream : SslStream {
 
-		public FtpSslStream(Stream innerStream)
-			: base(innerStream) {
-		}
-
-		public FtpSslStream(Stream innerStream, bool leaveInnerStreamOpen)
-			: base(innerStream, leaveInnerStreamOpen) {
-		}
-
+		/// <summary>
+		/// Create an SslStream object
+		/// </summary>
 		public FtpSslStream(Stream innerStream, bool leaveInnerStreamOpen, RemoteCertificateValidationCallback userCertificateValidationCallback)
 			: base(innerStream, leaveInnerStreamOpen, userCertificateValidationCallback) {
 		}
 
-		public FtpSslStream(Stream innerStream, bool leaveInnerStreamOpen, RemoteCertificateValidationCallback userCertificateValidationCallback, LocalCertificateSelectionCallback userCertificateSelectionCallback)
-			: base(innerStream, leaveInnerStreamOpen, userCertificateValidationCallback, userCertificateSelectionCallback) {
-		}
+#if NET462 || NETSTANDARD2_0
 
-#if !NET20 && !NET35
-		public FtpSslStream(Stream innerStream, bool leaveInnerStreamOpen, RemoteCertificateValidationCallback userCertificateValidationCallback, LocalCertificateSelectionCallback userCertificateSelectionCallback, EncryptionPolicy encryptionPolicy)
-			: base(innerStream, leaveInnerStreamOpen, userCertificateValidationCallback, userCertificateSelectionCallback, encryptionPolicy) {
-		}
+		private bool _closed = false;
 
 #endif
-		public override void Close() {
-			try {
-				if (!sentCloseNotify) {
-					SslDirectCall.CloseNotify(this);
-					sentCloseNotify = true;
-				}
-			}
-			finally {
-				base.Close();
-			}
-		}
-	}
 
-	internal static unsafe class SslDirectCall {
 		/// <summary>
-		/// Send an SSL close_notify alert.
+		/// Close
 		/// </summary>
-		/// <param name="sslStream"></param>
-		public static void CloseNotify(SslStream sslStream) {
-			if (sslStream.IsAuthenticated && sslStream.CanWrite) {
-				var isServer = sslStream.IsServer;
+		public override void Close() {
 
-				byte[] result;
-				int resultSz;
-				var asmbSystem = typeof(System.Net.Authorization).Assembly;
+#if NET462 || NETSTANDARD2_0
 
-				var SCHANNEL_SHUTDOWN = 1;
-				var workArray = BitConverter.GetBytes(SCHANNEL_SHUTDOWN);
+			// .NET Framework 4.6.2 and .NET Standard 2.0 does not provide a way to cleanly close-notify an SSL stream.
+			// Invoke the reflection-hack to send a TLS ALERT directly
 
-				var sslstate = FtpReflection.GetField(sslStream, "_SslState");
-				var context = FtpReflection.GetProperty(sslstate, "Context");
+			if (!_closed) { _closed = true; SslDirectCall.CloseNotify(this); }
 
-				var securityContext = FtpReflection.GetField(context, "m_SecurityContext");
-				var securityContextHandleOriginal = FtpReflection.GetField(securityContext, "_handle");
-				var securityContextHandle = default(SslNativeApi.SSPIHandle);
-				securityContextHandle.HandleHi = (IntPtr) FtpReflection.GetField(securityContextHandleOriginal, "HandleHi");
-				securityContextHandle.HandleLo = (IntPtr) FtpReflection.GetField(securityContextHandleOriginal, "HandleLo");
+#elif NET47_OR_GREATER || NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 
-				var credentialsHandle = FtpReflection.GetField(context, "m_CredentialsHandle");
-				var credentialsHandleHandleOriginal = FtpReflection.GetField(credentialsHandle, "_handle");
-				var credentialsHandleHandle = default(SslNativeApi.SSPIHandle);
-				credentialsHandleHandle.HandleHi = (IntPtr) FtpReflection.GetField(credentialsHandleHandleOriginal, "HandleHi");
-				credentialsHandleHandle.HandleLo = (IntPtr) FtpReflection.GetField(credentialsHandleHandleOriginal, "HandleLo");
+			// Invoke the SslStream.ShutdownAsync API
 
-				var bufferSize = 1;
-				var securityBufferDescriptor = new SslNativeApi.SecurityBufferDescriptor(bufferSize);
-				var unmanagedBuffer = new SslNativeApi.SecurityBufferStruct[bufferSize];
+			base.ShutdownAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
-				fixed (SslNativeApi.SecurityBufferStruct* ptr = unmanagedBuffer)
-				fixed (void* workArrayPtr = workArray) {
-					securityBufferDescriptor.UnmanagedPointer = (void*) ptr;
+#endif
 
-					unmanagedBuffer[0].token = (IntPtr) workArrayPtr;
-					unmanagedBuffer[0].count = workArray.Length;
-					unmanagedBuffer[0].type = SslNativeApi.BufferType.Token;
+			base.Close();
 
-					SslNativeApi.SecurityStatus status;
-					status = (SslNativeApi.SecurityStatus) SslNativeApi.ApplyControlToken(ref securityContextHandle, securityBufferDescriptor);
-					if (status == SslNativeApi.SecurityStatus.OK) {
-						unmanagedBuffer[0].token = IntPtr.Zero;
-						unmanagedBuffer[0].count = 0;
-						unmanagedBuffer[0].type = SslNativeApi.BufferType.Token;
+		}
 
-						var contextHandleOut = default(SslNativeApi.SSPIHandle);
-						var outflags = SslNativeApi.ContextFlags.Zero;
-						long ts = 0;
+		/// <summary>
+		/// For representing this SslStream in the log
+		/// </summary>
+		public override string ToString() {
 
-						var inflags = SslNativeApi.ContextFlags.SequenceDetect |
-						              SslNativeApi.ContextFlags.ReplayDetect |
-						              SslNativeApi.ContextFlags.Confidentiality |
-						              SslNativeApi.ContextFlags.AcceptExtendedError |
-						              SslNativeApi.ContextFlags.AllocateMemory |
-						              SslNativeApi.ContextFlags.InitStream;
+#if NETFRAMEWORK                     // All .NET Framework targets know nothing about NegotiatedCipherSuite
 
-						if (isServer) {
-							status = (SslNativeApi.SecurityStatus) SslNativeApi.AcceptSecurityContext(ref credentialsHandleHandle, ref securityContextHandle, null,
-								inflags, SslNativeApi.Endianness.Native, ref contextHandleOut, securityBufferDescriptor, ref outflags, out ts);
-						}
-						else {
-							status = (SslNativeApi.SecurityStatus) SslNativeApi.InitializeSecurityContextW(ref credentialsHandleHandle, ref securityContextHandle, null,
-								inflags, 0, SslNativeApi.Endianness.Native, null, 0, ref contextHandleOut, securityBufferDescriptor, ref outflags, out ts);
-						}
+			return $"{SslProtocol} ({CipherAlgorithm}, {KeyExchangeAlgorithm}, {KeyExchangeStrength})";
 
-						if (status == SslNativeApi.SecurityStatus.OK) {
-							var resultArr = new byte[unmanagedBuffer[0].count];
-							Marshal.Copy(unmanagedBuffer[0].token, resultArr, 0, resultArr.Length);
-							Marshal.FreeCoTaskMem(unmanagedBuffer[0].token);
-							result = resultArr;
-							resultSz = resultArr.Length;
-						}
-						else {
-							throw new InvalidOperationException(string.Format("AcceptSecurityContext/InitializeSecurityContextW returned [{0}] during CloseNotify.", status));
-						}
-					}
-					else {
-						throw new InvalidOperationException(string.Format("ApplyControlToken returned [{0}] during CloseNotify.", status));
-					}
-				}
+#elif NET5_0_OR_GREATER
 
-				var innerStream = (Stream)FtpReflection.GetProperty(sslstate, "InnerStream");
-				innerStream.Write(result, 0, resultSz);
-			}
+			return $"{SslProtocol} ({CipherAlgorithm}, {NegotiatedCipherSuite}, {KeyExchangeAlgorithm}, {KeyExchangeStrength})";
+
+#elif NETSTANDARD2_0_OR_GREATER      // <-- 2_0 is not a typo.
+
+			return $"{SslProtocol} ({CipherAlgorithm}, {KeyExchangeAlgorithm}, {KeyExchangeStrength})";
+#endif
+
 		}
 	}
 
-	internal static unsafe class SslNativeApi {
-		internal enum BufferType {
-			Empty,
-			Data,
-			Token,
-			Parameters,
-			Missing,
-			Extra,
-			Trailer,
-			Header,
-			Padding = 9,
-			Stream,
-			ChannelBindings = 14,
-			TargetHost = 16,
-			ReadOnlyFlag = -2147483648,
-			ReadOnlyWithChecksum = 268435456
+	/// <summary>
+	/// Reflection hack to issue an SSL Close Notify Alert to cleanly shutdown an SSL session
+	/// Valid only on .NET Framework
+	/// </summary>
+	internal unsafe static class SslDirectCall {
+		public static void CloseNotify(SslStream sslStream) {
+			if (!sslStream.IsAuthenticated) {
+				return;
+			}
+
+#if !NET462 && !NETSTANDARD2_0
+
+			throw new NotImplementedException("CloseNotify hack only for NET462 or NETSTANDARD2_0");
+
+#endif
+
+#pragma warning disable CS0162 // Unreachable code detected
+			byte[] result;
+			int resultSize;
+
+			byte[] sChannelShutdown = new byte[4] { 0x01, 0x00, 0x00, 0x00 };
+
+			NativeApi.SSPIHandle securityContextHandle = default(NativeApi.SSPIHandle);
+			NativeApi.SSPIHandle credentialsHandleHandle = default(NativeApi.SSPIHandle);
+#pragma warning restore CS0162 // Unreachable code detected
+
+#if NETFRAMEWORK
+
+			// Access the "context" field via SslState
+			var sslstate = ReflectUtil.GetField(sslStream, "_SslState");
+			var context = ReflectUtil.GetProperty(sslstate, "Context");
+
+			var securityContext = ReflectUtil.GetField(context, "m_SecurityContext");
+			var securityContextHandleOriginal = ReflectUtil.GetField(securityContext, "_handle");
+
+			securityContextHandle.HandleHi = (IntPtr)ReflectUtil.GetField(securityContextHandleOriginal, "HandleHi");
+			securityContextHandle.HandleLo = (IntPtr)ReflectUtil.GetField(securityContextHandleOriginal, "HandleLo");
+
+			var credentialsHandle = ReflectUtil.GetField(context, "m_CredentialsHandle");
+			var credentialsHandleHandleOriginal = ReflectUtil.GetField(credentialsHandle, "_handle");
+
+			credentialsHandleHandle.HandleHi = (IntPtr)ReflectUtil.GetField(credentialsHandleHandleOriginal, "HandleHi");
+			credentialsHandleHandle.HandleLo = (IntPtr)ReflectUtil.GetField(credentialsHandleHandleOriginal, "HandleLo");
+
+#endif
+
+#if NETSTANDARD || NET5_0_OR_GREATER
+
+			// Access the "context" field directly
+			var context = ReflectUtil.GetField(sslStream, "_context");
+
+			var securityContext = ReflectUtil.GetField(context, "_securityContext");
+			var securityContextHandleOriginal = ReflectUtil.GetField(securityContext, "_handle");
+
+			securityContextHandle.HandleHi = (IntPtr)ReflectUtil.GetField(securityContextHandleOriginal, "dwLower");
+			securityContextHandle.HandleLo = (IntPtr)ReflectUtil.GetField(securityContextHandleOriginal, "dwUpper");
+
+			var credentialsHandle = ReflectUtil.GetField(context, "_credentialsHandle");
+			var credentialsHandleHandleOriginal = ReflectUtil.GetField(credentialsHandle, "_handle");
+
+			credentialsHandleHandle.HandleHi = (IntPtr)ReflectUtil.GetField(credentialsHandleHandleOriginal, "dwLower");
+			credentialsHandleHandle.HandleLo = (IntPtr)ReflectUtil.GetField(credentialsHandleHandleOriginal, "dwUpper");
+
+#endif
+
+			NativeApi.SecurityBufferDescriptor securityBufferDescriptor = new NativeApi.SecurityBufferDescriptor();
+			NativeApi.SecurityBufferStruct[] unmanagedBuffer = new NativeApi.SecurityBufferStruct[1];
+
+			fixed (NativeApi.SecurityBufferStruct* ptr = unmanagedBuffer)
+
+			fixed (void* workArrayPtr = sChannelShutdown) {
+				securityBufferDescriptor.UnmanagedPointer = (void*)ptr;
+
+				unmanagedBuffer[0].token = (IntPtr)workArrayPtr;
+				unmanagedBuffer[0].count = 4;
+				unmanagedBuffer[0].type = 2;
+
+				int status;
+
+				status = NativeApi.ApplyControlToken(
+					ref securityContextHandle,
+					securityBufferDescriptor);
+
+				if (status != 0) {
+					throw new InvalidOperationException(string.Format("ApplyControlToken returned [{0}] during CloseNotify.", status));
+				}
+
+				unmanagedBuffer[0].token = IntPtr.Zero;
+				unmanagedBuffer[0].count = 0;
+				unmanagedBuffer[0].type = 2;
+
+				NativeApi.SSPIHandle contextHandleOut = default(NativeApi.SSPIHandle);
+
+				int inflags = 0x811c;
+				int outflags = 0;
+
+				status = NativeApi.InitializeSecurityContextW(
+					ref credentialsHandleHandle,
+					ref securityContextHandle,
+					null,
+					inflags,
+					0,
+					16,
+					null,
+					0,
+					ref contextHandleOut,
+					securityBufferDescriptor,
+					ref outflags,
+					out _);
+
+				if (status != 0) {
+					throw new InvalidOperationException(string.Format("InitializeSecurityContextW returned [{0}] during CloseNotify.", status));
+				}
+
+				byte[] resultArr = new byte[unmanagedBuffer[0].count];
+				Marshal.Copy(unmanagedBuffer[0].token, resultArr, 0, resultArr.Length);
+				Marshal.FreeCoTaskMem(unmanagedBuffer[0].token);
+				result = resultArr;
+				resultSize = resultArr.Length;
+			}
+
+#if NETFRAMEWORK
+
+			var innerStream = (Stream)ReflectUtil.GetProperty(sslstate, "InnerStream");
+			innerStream.Write(result, 0, resultSize);
+
+#endif
+
+#if NETSTANDARD || NET5_0_OR_GREATER
+
+			var innerStream = (Stream)ReflectUtil.GetProperty(sslStream, "InnerStream");
+			innerStream.Write(result, 0, resultSize);
+
+#endif
+
 		}
+	}
+
+	internal unsafe static class NativeApi {
 
 		[StructLayout(LayoutKind.Sequential, Pack = 1)]
 		internal struct SSPIHandle {
 			public IntPtr HandleHi;
 			public IntPtr HandleLo;
-			public bool IsZero => HandleHi == IntPtr.Zero && HandleLo == IntPtr.Zero;
-
-			[ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
-			internal void SetToInvalid() {
-				HandleHi = IntPtr.Zero;
-				HandleLo = IntPtr.Zero;
-			}
-
-			public override string ToString() {
-				return HandleHi.ToString("x") + ":" + HandleLo.ToString("x");
-			}
 		}
 
 		[StructLayout(LayoutKind.Sequential)]
@@ -190,9 +242,9 @@ namespace FluentFTP {
 			public readonly int Count;
 			public unsafe void* UnmanagedPointer;
 
-			public SecurityBufferDescriptor(int count) {
+			public SecurityBufferDescriptor() {
 				Version = 0;
-				Count = count;
+				Count = 1;
 				UnmanagedPointer = null;
 			}
 		}
@@ -200,96 +252,46 @@ namespace FluentFTP {
 		[StructLayout(LayoutKind.Sequential)]
 		internal struct SecurityBufferStruct {
 			public int count;
-			public BufferType type;
+			public int type;
 			public IntPtr token;
 			public static readonly int Size = sizeof(SecurityBufferStruct);
 		}
 
-		internal enum SecurityStatus {
-			OK,
-			ContinueNeeded = 590610,
-			CompleteNeeded,
-			CompAndContinue,
-			ContextExpired = 590615,
-			CredentialsNeeded = 590624,
-			Renegotiate,
-			OutOfMemory = -2146893056,
-			InvalidHandle,
-			Unsupported,
-			TargetUnknown,
-			InternalError,
-			PackageNotFound,
-			NotOwner,
-			CannotInstall,
-			InvalidToken,
-			CannotPack,
-			QopNotSupported,
-			NoImpersonation,
-			LogonDenied,
-			UnknownCredentials,
-			NoCredentials,
-			MessageAltered,
-			OutOfSequence,
-			NoAuthenticatingAuthority,
-			IncompleteMessage = -2146893032,
-			IncompleteCredentials = -2146893024,
-			BufferNotEnough,
-			WrongPrincipal,
-			TimeSkew = -2146893020,
-			UntrustedRoot,
-			IllegalMessage,
-			CertUnknown,
-			CertExpired,
-			AlgorithmMismatch = -2146893007,
-			SecurityQosFailed,
-			SmartcardLogonRequired = -2146892994,
-			UnsupportedPreauth = -2146892989,
-			BadBinding = -2146892986
-		}
-
-		[Flags]
-		internal enum ContextFlags {
-			Zero = 0,
-			Delegate = 1,
-			MutualAuth = 2,
-			ReplayDetect = 4,
-			SequenceDetect = 8,
-			Confidentiality = 16,
-			UseSessionKey = 32,
-			AllocateMemory = 256,
-			Connection = 2048,
-			InitExtendedError = 16384,
-			AcceptExtendedError = 32768,
-			InitStream = 32768,
-			AcceptStream = 65536,
-			InitIntegrity = 65536,
-			AcceptIntegrity = 131072,
-			InitManualCredValidation = 524288,
-			InitUseSuppliedCreds = 128,
-			InitIdentify = 131072,
-			AcceptIdentify = 524288,
-			ProxyBindings = 67108864,
-			AllowMissingBindings = 268435456,
-			UnverifiedTargetName = 536870912
-		}
-
-		internal enum Endianness {
-			Network,
-			Native = 16
-		}
-
-		[ReliabilityContract(Consistency.WillNotCorruptState, Cer.MayFail)]
 		[DllImport("secur32.dll", ExactSpelling = true, SetLastError = true)]
-		internal static extern int ApplyControlToken(ref SSPIHandle contextHandle, [In] [Out] SecurityBufferDescriptor outputBuffer);
+		internal static extern int ApplyControlToken(ref SSPIHandle contextHandle, [In][Out] SecurityBufferDescriptor outputBuffer);
 
-		[ReliabilityContract(Consistency.WillNotCorruptState, Cer.MayFail)]
 		[DllImport("secur32.dll", ExactSpelling = true, SetLastError = true)]
-		internal static extern unsafe int AcceptSecurityContext(ref SSPIHandle credentialHandle, ref SSPIHandle contextHandle, [In] SecurityBufferDescriptor inputBuffer, [In] ContextFlags inFlags, [In] Endianness endianness, ref SSPIHandle outContextPtr, [In] [Out] SecurityBufferDescriptor outputBuffer, [In] [Out] ref ContextFlags attributes, out long timeStamp);
-
-		[ReliabilityContract(Consistency.WillNotCorruptState, Cer.MayFail)]
-		[DllImport("secur32.dll", ExactSpelling = true, SetLastError = true)]
-		internal static extern unsafe int InitializeSecurityContextW(ref SSPIHandle credentialHandle, ref SSPIHandle contextHandle, [In] byte* targetName, [In] ContextFlags inFlags, [In] int reservedI, [In] Endianness endianness, [In] SecurityBufferDescriptor inputBuffer, [In] int reservedII, ref SSPIHandle outContextPtr, [In] [Out] SecurityBufferDescriptor outputBuffer, [In] [Out] ref ContextFlags attributes, out long timeStamp);
+		internal unsafe static extern int InitializeSecurityContextW(ref SSPIHandle credentialHandle, ref SSPIHandle contextHandle, [In] byte* targetName, [In] int inFlags, [In] int reservedI, [In] int endianness, [In] SecurityBufferDescriptor inputBuffer, [In] int reservedII, ref SSPIHandle outContextPtr, [In][Out] SecurityBufferDescriptor outputBuffer, [In][Out] ref int attributes, out long timeStamp);
 	}
 
-#endif
+	internal static class ReflectUtil {
+
+		private static BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+
+		public static object GetField(object obj, string fieldName) {
+			var tp = obj.GetType();
+			var info = GetAllFields(tp).Where(f => f.Name == fieldName).Single();
+			return info.GetValue(obj);
+		}
+
+		public static object GetProperty(object obj, string propertyName) {
+			var tp = obj.GetType();
+			var info = GetAllProperties(tp).Where(f => f.Name == propertyName).Single();
+			return info.GetValue(obj, null);
+		}
+
+		private static IEnumerable<FieldInfo> GetAllFields(Type t) {
+			if (t == null) {
+				return Enumerable.Empty<FieldInfo>();
+			}
+			return t.GetFields(flags).Concat(GetAllFields(t.BaseType));
+		}
+
+		private static IEnumerable<PropertyInfo> GetAllProperties(Type t) {
+			if (t == null) {
+				return Enumerable.Empty<PropertyInfo>();
+			}
+			return t.GetProperties(flags).Concat(GetAllProperties(t.BaseType));
+		}
+	}
 }

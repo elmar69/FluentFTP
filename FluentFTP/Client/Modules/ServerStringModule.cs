@@ -36,7 +36,8 @@ namespace FluentFTP.Client.Modules {
 			"can't find the path",
 			"cannot find the path",
 			"could not find the path",
-			"file doesnot exist"
+			"file doesnot exist",
+			"couldn't open the file or directory"
 		};
 
 		#endregion
@@ -99,6 +100,38 @@ namespace FluentFTP.Client.Modules {
 		public static string[] failedTLS = new[] {
 			"die angeforderte funktion wird nicht unterstützt",
 			"the function requested is not supported",
+		};
+
+		#endregion
+
+		#region Critical commands
+		public static string[] criticalSingleCommands = new[] {
+			"QUIT",
+		};
+
+		public static string[] criticalStartingCommands = new[] {
+			"EPRT",
+			"EPSV",
+			"LPSV",
+			"PASV",
+			"SPSV",
+			"PORT",
+			"LPRT",
+			"RNFR",
+		};
+
+		public static string[] criticalTerminatingCommands = new[] {
+			"ABOR",
+			"LIST",
+			"NLST",
+			"MLSD",
+			"STOR",
+			"STOU",
+			"APPE",
+			"REST",
+			"RETR",
+			"THMB",
+			"RNTO",
 		};
 
 		#endregion

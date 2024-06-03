@@ -1,20 +1,56 @@
-FROM debian:bullseye-slim
+#
+# FluentFTP Integration Test Server: proftpd
+#
 
-MAINTAINER Philippe Le Van (@plv on twitter)
+#
+# Stage 1: build & production
+#
 
-RUN apt-get update -qq && \
-	apt-get install -y proftpd && \
-	apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+FROM	common-debian-slim:fluentftp AS build
 
-RUN sed -i "s/# DefaultRoot/DefaultRoot /" /etc/proftpd/proftpd.conf
+LABEL	Description="FluentFTP proftpd docker image based on Debian Bullseye."
 
-EXPOSE 20 21
+SHELL	["/bin/bash", "-c"]
 
-ADD docker-entrypoint.sh /usr/local/sbin/docker-entrypoint.sh
-# Remove \r from the windows style \r\n newline.
-RUN sed -e 's/\r//' /usr/local/sbin/docker-entrypoint.sh > /usr/local/sbin/docker-entrypoint2.sh && \
-	chmod 777 /usr/local/sbin/docker-entrypoint2.sh
-ENTRYPOINT ["/usr/local/sbin/docker-entrypoint2.sh"]
+ARG	DEBIAN_FRONTEND=noninteractive
+ARG	APT_CMD='apt install -y --no-install-recommends'
 
-CMD ["proftpd", "--nodaemon"]
+COPY	sources.list /etc/apt/sources.list
+
+RUN	apt update && \
+	\
+	$APT_CMD \
+		openssl \
+		proftpd \
+		proftpd-mod-crypto
+
+COPY	run-proftpd.sh /usr/sbin/
+
+COPY	proftpd.conf /etc/proftpd/
+COPY	modules.conf /etc/proftpd/
+COPY	tls.conf /etc/proftpd/
+
+RUN	sed -i -e "s/\r//" /etc/proftpd/proftpd.conf && \
+	sed -i -e "s/\r//" /etc/proftpd/modules.conf && \
+	sed -i -e "s/\r//" /etc/proftpd/tls.conf && \
+	sed -i -e "s/\r//" /usr/sbin/run-proftpd.sh && \
+	chmod +x /usr/sbin/run-proftpd.sh && \
+	\
+	useradd -m -p savatlcb.1m26 fluentuser && \
+	\
+	mkdir -p /home/fluentuser/ && \
+	chown -R fluentuser:users /home/fluentuser && \
+	\
+	openssl req -x509 -newkey rsa:4096 \
+		-keyout /etc/ssl/private/proftpd.key -out /etc/ssl/certs/proftpd.crt \
+		-subj "/C=US/ST=State/L=/O=Dev/CN=fluentftp" \
+		-nodes -days 3650 && \
+	\
+	chmod 0600 /etc/ssl/private/proftpd.key && \
+	chmod 0640 /etc/ssl/private/proftpd.key
+
+VOLUME	["/home/fluentuser", "/var/log/proftpd"]
+
+EXPOSE	20 21
+
+CMD	["/usr/sbin/run-proftpd.sh"]

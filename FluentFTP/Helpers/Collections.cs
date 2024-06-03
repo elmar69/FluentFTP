@@ -1,5 +1,11 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Text;
+using System.Xml.Serialization;
+using System.Xml;
+using System.Reflection;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace FluentFTP.Helpers {
 	/// <summary>
@@ -22,19 +28,19 @@ namespace FluentFTP.Helpers {
 				return true;
 			}
 
-			if (value is IList) {
-				return ((IList)value).Count == 0;
+			if (value is IList list) {
+				return list.Count == 0;
 			}
 
-			if (value is byte[]) {
-				return ((byte[])value).Length == 0;
+			if (value is byte[] bytes) {
+				return bytes.Length == 0;
 			}
 
 			return false;
 		}
 
 		/// <summary>
-		/// Adds a prefix to the given strings, returns a new array.
+		/// Converts the arguments to an array of strings.
 		/// </summary>
 		public static List<string> ItemsToString(this object[] args) {
 			var results = new List<string>();
@@ -48,7 +54,7 @@ namespace FluentFTP.Helpers {
 					txt = "null";
 				}
 				else if (v is string) {
-					txt = "\"" + v as string + "\"";
+					txt = "\"" + v + "\"";
 				}
 				else {
 					txt = v.ToString();
@@ -59,6 +65,7 @@ namespace FluentFTP.Helpers {
 
 			return results;
 		}
+
 
 		/// <summary>
 		/// Ensures the given item is only added once. If it was not present true is returned, else false is returned.

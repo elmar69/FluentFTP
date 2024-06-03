@@ -45,11 +45,7 @@ namespace FluentFTP.Helpers {
 		/// Join the given strings by a delimiter.
 		/// </summary>
 		public static string Join(this List<string> values, string delimiter) {
-#if NET20 || NET35
-			return string.Join(delimiter, values.ToArray());
-#else
 			return string.Join(delimiter, values);
-#endif
 		}
 
 		/// <summary>
@@ -201,12 +197,12 @@ namespace FluentFTP.Helpers {
 		public static string[] SplitString(this string str) {
 			var allTokens = new List<string>(str.Split(null));
 			for (var i = allTokens.Count - 1; i >= 0; i--) {
-				if (((string)allTokens[i]).Trim().Length == 0) {
+				if (allTokens[i].Trim().Length == 0) {
 					allTokens.RemoveAt(i);
 				}
 			}
 
-			return (string[])allTokens.ToArray();
+			return allTokens.ToArray();
 		}
 
 		/// <summary>
@@ -260,9 +256,9 @@ namespace FluentFTP.Helpers {
 		}
 
 		/// <summary>
-		/// Checks if the reply contains any of the known error strings
+		/// Checks if the reply contains any of the known error strings, by checking in case-insensitive manner.
 		/// </summary>
-		public static bool IsKnownError(this string reply, string[] strings) {
+		public static bool ContainsAnyCI(this string reply, string[] strings) {
 
 			// FIX: absorb cases where the reply is null (see issue #631)
 			if (reply == null) {
@@ -279,6 +275,23 @@ namespace FluentFTP.Helpers {
 			return false;
 		}
 
+		/// <summary>
+		/// Checks if the string equals any of these values, by checking in case-sensitive manner.
+		/// </summary>
+		public static bool EqualsAny(this string text, string[] strings) {
+
+			if (text == null) {
+				return false;
+			}
+
+			foreach (var str in strings) {
+				if (text.Equals(str, StringComparison.Ordinal)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
 
 		/// <summary>
 		/// Checks if the string contains the given substring in a case-insensitive manner.

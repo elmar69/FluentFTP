@@ -1,5 +1,393 @@
 # Release Notes
 
+#### 50.0.1
+
+ - Fix: Correct sequencing of FTP stream disposing for .NET Framework
+ - Fix: Extraneous `GetReply` call in `UploadInternal`/`DownloadInternal`
+
+#### 50.0.0
+
+ - **File Verification** (thanks [DasRaschloch](/DasRaschloch) and [FanDjango](/FanDjango))
+   - New: All file transfer methods now support size/checksum/date comparison
+   - New: `DownloadDirectory`, `DownloadFile`, `DownloadFiles`, support new size/checksum/date comparison
+   - New: `UploadDirectory`, `UploadFile`, `UploadFiles` support new size/checksum/date comparison
+   - New: FXP `TransferDirectory`, `TransferFile` support new size/checksum/date comparison
+   - New: `FtpVerify` has new options: `Size/Date/Checksum/OnlyChecksum`
+ - **File Transfer** (thanks [FanDjango](/FanDjango))
+   - Fix: `DownloadFile` with Progress throws `FtpException`
+   - Fix: Correctly handle internal errors in `UploadInternal`/`DownloadInternal`
+   - Fix: `GetFileSize` provides invalid file length and transfer fails
+ - **FTP Proxy** (thanks [zhaohuiyingxue](/zhaohuiyingxue))
+   - Fix: `GetListing` does not use the proxy with passive FTP
+ - **FTP Disconnection** (thanks [FanDjango](/FanDjango))
+   - New: Indicate creating/disposing sync/async connections in log
+   - Fix: Disconnection during Connect async needs to be awaited
+   - Fix: FTP `BaseClient` is also `IAsyncDisposable` in addition to `IDisposable`
+   - Fix: Disposing a connected `AsyncFtpClient` throws non-fatal `InvalidCastException`
+   - Fix: Cloning a `AsyncFtpClient` throws non-fatal `InvalidCastException`
+   - Change: `AsyncFtpClient` to change all `Close` usage to `await CloseAsync`
+   - Change: `FtpDataStream` now supports an async close method
+   - Change: Use `DisposeAsync` pattern for `AsyncFtpClient`
+   - Change: Call `Dispose`/`DisposeAsync` on `BufferedStream` instead of `Flush`/`FlushAsync`
+   - Fix: Restore call to `FtpSslStream` for graceful TLS termination
+ - **IBM OS/400** (thanks [FanDjango](/FanDjango))
+   - Fix: Async server-specific post-connection commands was missing for OS400
+
+#### 49.0.2
+
+ - **NOOP Daemon** (thanks [FanDjango](/FanDjango))
+   - Fix: Improve NOOP daemon logic
+   - Fix: More reliable termination
+   - Fix: Handle NOOP API exceptions
+   - Fix: Handle NOOP situations in `Execute` API
+   - Fix: No need for NOOP commands before a QUIT command
+   - Fix: Improve `GetReply` logging and handling for stale data and NOOP reactions
+   - Fix: If QUIT is stashed and reconnect is pending, defer it.
+   - Fix: Recognize special commands & responses in all cases
+   - Fix: Delay NOOP connectivity tests until connection fully established
+ - **Connection Status** (thanks [FanDjango](/FanDjango))
+   - Fix: `IsStillConnected`: Clean up `Connect`/`DisconnectInternal` interface artifacts
+   - Fix: `IsStillConnected`: Add log messages
+ - **IBM OS/400** (thanks [FanDjango](/FanDjango))
+   - Fix: Enhance detection of IBM OS/400 servers
+   - Fix: Set `SITE LISTFMT 1` and `SITE NAMEFMT 1` on connect
+ - **File Transfer**
+   - Fix: `DownloadFile`: `FileCount` Progress updated even when files are skipped (thanks [J0nathan550](/J0nathan550))
+   - Fix: `DownloadFile`: `stopPosition` not working in some cases (thanks [alexgubanow](/alexgubanow))
+   - Fix: `DownloadFile`: Progress calculation not correct when using `stopPosition` (thanks [alexgubanow](/alexgubanow))
+
+#### 49.0.1
+
+ - Fix: Change semaphore logic to prevent deadlock in NOOP Daemon (thanks [FanDjango](/FanDjango))
+
+#### 49.0.0
+
+ - **NOOP Daemon** (thanks [FanDjango](/FanDjango))
+   - New: Revised NOOP handling with new config option `Noop` to enable NOOP daemon
+   - New: New config options `NoopInactiveCommands` and `NoopActiveCommands` to set FTP commands usable
+   - New: New config option `NoopTestConnectivity` to issue NOOP commands before every FTP command
+   - Change: `NoopInterval` now has a default of 3 minutes
+   - Change: Update `GetReply` for new NOOP handling logic
+ - **Connection Status** (thanks [FanDjango](/FanDjango))
+   - New: `IsStillConnected()` API to reliably check if FTP connection is still active
+ - **Auto Connection** (mostly thanks [FanDjango](/FanDjango))
+   - New: Treat timeouts during `AutoDetect` as failed detection instead of aborting (thanks [FabBadDog](/FabBadDog))
+   - Fix: Prevent Auto-Reconnect occurring before connect is complete
+   - Fix: `AutoDetect` is thread unsafe, fix `AutoDetectConfig` `IncludeImplicit` logic
+ - **Multi-Threading** (thanks [FanDjango](/FanDjango))
+   - Change: Remove all internal locking in the sync `FtpClient`
+ - **FTP Transfers** (thanks [FanDjango](/FanDjango))
+   - Fix: Servers with no server handler used wrong `GetListing()` command
+   - Fix: `OpenRead` retry attempt fails due to typo
+   - Fix: Missing code in async stale data handler
+   - Fix: Missing code in Async `DisableUTF8` API
+ - **FTP Proxies**
+   - Fix: Correctly set supported method in SOCKS 5 proxy negotiation (thanks [rmja](/rmja))
+ - **Codebase Maintainance** (mostly thanks [FanDjango](/FanDjango))
+   - Fix: Remove `NET50_OR_LATER` invalid moniker (thanks [sean-bloch](/sean-bloch))
+   - Fix: Cleanup and standardize all .NET Target framework markers (TFMs)
+   - Fix: Clean up interfaces and implementation for Connect/Disconnect
+ - **Testing** (thanks [FanDjango](/FanDjango))
+   - Fix: Powershell folder was not being populated, add to GIT ignore list
+   - Fix: Docker build process was failing due to debian py image changes
+ - **Logging** (thanks [FanDjango](/FanDjango))
+   - New: Log selected server handler, if any are detected
+   - New: Log improvements for `OpenAppend`, `OpenRead` and `OpenWrite` to help in debugging
+
+#### 48.0.3
+ - **Utilities**
+   - New: `FtpResult.ToStatus()` API to easily compare result values of `DownloadFile`/`DownloadFiles` and `UploadFile`/`UploadFiles`
+ - **File Transfer** (thanks [FanDjango](/FanDjango))
+   - Fix: Code cleanup for FTP path and directory handling
+   - Fix: `CreateDirectory` sometimes needed in `AutoNavigate` mode
+   - Fix: Optimize `CWD`/`PWD` directory navigation in `AutoNavigate` mode
+   - Fix: Prevent infinite loop on stale data read when FTP socket stalled
+   - Fix: Some FTP servers throw `450` error for empty folders
+
+#### 48.0.1
+ - **Directory Navigation** (thanks [FanDjango](/FanDjango))
+   - New: Add auto-navigate support to `GetCheckSum`
+   - Fix: `UploadDirectory` with `FtpNavigate.Conditional` does not auto-navigate correctly
+   - Fix: Not all linux ftp servers support backslash as path separator character
+   - Fix: Cancellation token passing and await syntax for `DownloadFile`, `UploadFile`, `GetListing`
+
+#### 48.0.0
+ - **Directory Navigation** 
+   - New: `Navigate` Config setting to automatically handle FTP directory navigation
+   - New: Download and Upload API honors `Navigate` setting
+   - New: `GetListing` API honors `Navigate` setting
+ - **File Transfer** (thanks [FanDjango](/FanDjango))
+   - New: `DownloadUriBytes` API method to directly connect and download a URI/URL
+   - Fix: `OpenRead`, `OpenWrite` and `OpenAppend` quirks to handle their stale data
+   - Fix: Complete redesign of FTP socket stale data handling and `CheckStaleData` implementation
+ - **Auto Connection** (thanks [FanDjango](/FanDjango))
+   - New: Overloaded API `AutoDetect` with object-driven configuration using `FtpAutoDetectConfig`
+   - New: Add options `RequireEncryption` and `IncludeImplicit` to `AutoDetect` to allow for more configurability during auto-connection
+   - Fix: Improve `AutoDetect` behaviour to support various server use-cases
+   - Fix: Add `RNFM`/`RNTO` FTP commands to critical-sequence list to fix Auto-Reconnect of SSL sessions
+   - Fix: `AutoDetect` empty config is gracefully handled
+ - **Logging**
+   - New: Function Logging method to support logging objects
+   - Fix: Logging strings creation conditional on it being at all in use (thanks [jnyrup](/jnyrup))
+   - Fix: Improve logging of FTP socket stale data (thanks [FanDjango](/FanDjango))
+
+#### 47.0.0
+ - **Logging** (thanks [FanDjango](/FanDjango))
+   - New: Add exact .NET platform build target during the version logging
+ - **File Transfer**
+   - New: Config API `LocalFileShareOption` to allow setting file sharing mode for uploads
+   - New: Connection type `PASVUSE` aka `PassiveAllowUnroutable`
+   - New: Add friendlier names for connection types `AutoActive` and `PassiveExtended`
+ - **File Hashing** (thanks [FanDjango](/FanDjango))
+   - Fix: Parse non-standard FTP hashes for BrickFTP, Files.com, ExaVault.com
+ - **FTP Connections** (thanks [FanDjango](/FanDjango))
+   - Fix: SSL Buffering: Improve connection logic, update comments, refactor code
+   - Fix: SSL Buffering: Cannot connect to FTPS IIS server on Windows 2019 from Azure Functions V4
+   - Fix: Disconnection: Improve conditional compiles and test for each target in `FtpSslStream`
+   - Fix: Disconnection: Use `ShutDownAsync ` for .NET 4.7 and later
+   - Fix: `InnerException` does not get caught during FTPS security exception
+   - Fix: Remove dead code in SSL permanent failure detection
+   - Fix: Custom Stream: `PolicyErrors` not being set correctly
+ - **File Listing** (thanks [FanDjango](/FanDjango))
+   - Fix: Improve file name parsing logic for DOS/Windows/IIS servers
+   - Fix: Improved null checks for `InfoMessages` (thanks [jnyrup](/jnyrup))
+ - **Testing** (thanks [FanDjango](/FanDjango))
+   - Fix: `GnuTlsStream` integration tests due to invalid stream detection
+
+#### 46.0.2
+ - Fix: Custom stream logging tweak: Message first then close stream
+ - Fix: Custom stream: Also log `InnerException` if it exists within the exception
+ - Fix: Internal stream null check to avoid exception in `Execute` API methods
+
+#### 46.0.1
+ - Fix: Hotfix to remove new `DowloadStream` overload that causes compile failure
+
+#### 46.0.0
+ - New: Add `stopPosition` parameter to `DownloadBytes` and `DowloadStream` to allow partial downloads
+
+#### 45.2.0
+ - New: Add 9 missing properties to the FTP client interfaces
+ - New: Improve log message wording for EPSV & proxies (thanks [FanDjango](/FanDjango))
+ - Fix: Improve GetReply to handle connection loss edge cases and timeout exceptions, possibly incurring cpu-loops (thanks [FanDjango](/FanDjango))
+ - Fix: Improve NOOP behavior to correctly handle timeout exceptions (thanks [FanDjango](/FanDjango))
+
+#### 45.1.0
+ - New: `DiscoverSslSessionLength` API to auto compute a working value for SSL Session length (thanks [FanDjango](/FanDjango))
+
+#### 45.0.4
+ - API: Rename `ExecuteGetText` to `ExecuteDownloadText`
+ - Fix: `AsyncFtpClient.CreateDirectory` fails on freshly created client instance (thanks [FanDjango](/FanDjango))
+
+#### 45.0.2
+ - New: `ExecuteGetText` API to execute an FTP command and return multiline output (thanks [FanDjango](/FanDjango))
+ - New: Integration with `FluentFTP.GnuTLS` NuGet package to allow for GnuTLS TLS 1.3 streams
+
+#### 44.0.1
+ - **File Transfer**
+   - New: `UploadFiles` API in `AsyncFtpClient` which takes an `IEnumerable<FileInfo>`
+   - New: `UploadFiles` and `DownloadFiles` now support rules which allow filtering of uploaded/downloaded files
+   - New: `UploadFiles` and `DownloadFiles` now return a `List<FtpResult>` with per-file status rather than just a count
+   - New: `FtpMissingObjectException` thrown when trying to download a non-existant object
+   - New: Download API `DownloadDirectory`, `DownloadFile`, `DownloadBytes`, `DownloadStream` will throw `FtpMissingObjectException` rather than silently failing
+   - New: Download API `DownloadFiles` will mark non-existant files as `IsFailed` and add the `Exception` rather than silently failing
+   - Tests: New integration tests to check fail conditions of Download API
+   - Fix: Correctly detect non-existant files and folders on FileZillla server (thanks [FanDjango](/FanDjango))
+ - **Connection**
+   - New: Improve reconnect logic to restore working directory and ASCII/Binary data type on automatic reconnection (thanks [FanDjango](/FanDjango))
+   - New: Improve `Execute` logic to handle working directory on automatic reconnection (thanks [FanDjango](/FanDjango))
+   - New: Do not attempt Reconnect if we have never been connected before (thanks [FanDjango](/FanDjango))
+   - Change: Reconnect logging messages elevated from `Info` to `Warn` (thanks [FanDjango](/FanDjango))
+   - Fix: Use `ConnectAsync` for `net472` platform where required (thanks [jnyrup](/jnyrup))
+ - **Exceptions**
+   - Change: Move all exception types into the `FluentFTP.Exceptions` namespace
+   - New: Separate the log message from the exception in the handler (thanks [jnyrup](/jnyrup))
+   - New: Add support for printing exception messages on a newline for socket exceptions (thanks [FanDjango](/FanDjango))
+ - **Logging**
+   - New: Setting `Config.LogDurations` to configure if durations are to be logged
+   - New: Add FTP command roundtrip duration to every `Response` log message (thanks [FanDjango](/FanDjango))
+   - New: Smart rendering of log message durations (hours, minutes, seconds, MS)
+   - Fix: Improve exception handling for connection/disconnection and authentication (thanks [FanDjango](/FanDjango))
+   - Fix: Simplify exception handling using `when` keyword and new conditional keywords (thanks [jnyrup](/jnyrup))
+ - **Quality**
+   - Fix: Reduce library warnings by improving code patterns used (thanks [FanDjango](/FanDjango))
+   - Fix: Reduce test warnings by improving code patterns used (thanks [FanDjango](/FanDjango))
+
+#### 43.0.0
+ - Please read the [Migration Guide](https://github.com/robinrodricks/FluentFTP/wiki/v40-Migration-Guide#logging) for help migrating to the new version!
+ - **Packaging** (thanks [jnyrup](/jnyrup))
+   - Core FluentFTP package has removed the dependency on MELA (Microsoft.Extensions.Logging.Abstractions)
+   - New [FluentFTP.Logging](https://www.nuget.org/packages/FluentFTP.Logging) package released that integrates with MELA
+ - **Logging** (thanks [jnyrup](/jnyrup))
+   - `FtpClient.Logger` is no longer a MELA `ILogger`
+   - `FtpClient.Logger` is now a custom interface called `IFtpLogger`
+
+#### 42.2.0
+ - **Connection** (thanks [FanDjango](/FanDjango))
+   - New: Save bandwidth on automatic reconnection by skipping `FEAT` command
+   - Fix: Implementation of connection/disconnection internal logic
+   - Fix: Create a default `ValidateCertificate` handler if none is provided
+   - Fix: Auto-reconnect SSL streams after a set number of replies are read
+ - **File Transfer** (thanks [FanDjango](/FanDjango))
+   - New: Upload: Ability to upload file streams with unknown size
+   - Fix: Upload: Timeout detection for file streams with unknown size
+ - **File Listings** (thanks [FanDjango](/FanDjango))
+   - New: `SetModifiedTime` falls back to `MDTM` if `MFMT` command not available
+   - New: `GetListing`: Catch control connection loss and retry once
+   - Fix: `GetListing` silently fails and returns empty array if connection lost
+   - Fix: IBM OS/400: Correctly handle special chars on EBCDIC code page fault
+ - **Tests** (thanks [FanDjango](/FanDjango))
+   - New: Docker: Add optional path to allow the user to save disk space
+   - Fix: Fix many XML compiler warnings in the testing system
+
+#### 42.1.0
+ - **FTP** (thanks [FanDjango](/FanDjango))
+   - New: Detect Apache FTP Server (allows for future server-specific handling)
+   - New: Major improvements to automatic FTP reconnection on connection loss
+   - New: Special handling to prevent automatic FTP reconnection during critical FTP sequences
+   - New: `Config.SslSessionLength` setting to perform automatic reconnection to bypass SSL issues
+   - Fix: Connect closing has been removed from `ReadStaleData` and moved into `Execute`
+   - Fix: Improved NOOP handling by detecting more formats of NOOP FTP replies
+   - Fix: `IOException` edge case on FTPS connections after a certain number of FTP commands
+   - Fix: Handle early `226 Transfer complete` edge case in FTP file download
+   - Fix: Honor `FtpRemoteExists.NoCheck` mode in `MoveFile` to prevent checking for existing files
+ - **Tests** (thanks [FanDjango](/FanDjango))
+   - New: Improved Docker build process using common images to speed up build times
+   - New: Rewrite all first-party Docker images to use pre-built common images
+   - New: Support for Apache FTP Server integration test server
+   
+#### 42.0.2
+ - **FTP** (thanks [FanDjango](/FanDjango))
+   - New: DNS Caching to prevent DNS server rejecting name resolution for rapidly repeating requests
+   - New: Better log message for stream dispose to indicate which stream was disposed
+   - Fix: Typo in `FtpException` thrown when creating directories
+   - Fix: Do not assume the server path when `CWD` command sent
+   - Change: Refactor post-Execute operations and implement parity in sync/async API
+ - **Connection** (thanks [FanDjango](/FanDjango))
+   - Fix: `AutoConnect` fails with Azure FTP servers due to profile handling
+   - Change: Improve exception throwing order for `InvalidOperationException` if unable to connect
+   - Change: Complete rewrite of `Connect` API 
+   - New: Add check to ensure that the IP version is permitted when connecting to servers
+   - Fix: Implement retry logic to check all possibly server addresses before failing with an exception
+   - Fix: Implement improved logic to detect timeouts and socket failures
+   - Fix: `ConnectTimeout` is not taking effect for `ConnectAsync` API
+   - Fix: Reset `CurrentDataType` when re-connected to an FTP server
+ - **File Transfer** (thanks [FanDjango](/FanDjango))
+   - Fix: Parity in resume logic for upload and download and throw `AggregateException` where required
+   - New: Implement the missing `ResumeUpload` for synchronous API
+   - New: Add a log message so that the resume operation is actually noticed by users
+
+#### 42.0.1
+ - **FTP**
+   - New: TLS authentication failures will always throw `AuthenticationException` (thanks [FanDjango](/FanDjango))
+   - Fix: Improve handling of stale data on socket after `GetListing` (thanks [FanDjango](/FanDjango))
+ - **Tests**
+   - New: Redesigned Pureftpd integration test server (thanks [FanDjango](/FanDjango))
+ - **Proxies**
+   - Fix: Read extra bytes to fix `GetListing` for SOCKS4 and SOCKS4a proxies (thanks [FanDjango](/FanDjango))
+
+#### 42.0.0
+ - Please read the [Migration Guide](https://github.com/robinrodricks/FluentFTP/wiki/v40-Migration-Guide) for help migrating to the new version!
+ - **API**
+   - New: `LastReplies` property to fetch a list of the last 5 server replies (thanks [FanDjango](/FanDjango))
+   - Removed: `Config.DisconnectWithShutdown` as it was not required (thanks [FanDjango](/FanDjango))
+   - Removed: `FtpListOption.NoImage` as it was not required (thanks [FanDjango](/FanDjango))
+   - Removed: Privatize `CurrentDataType` and remove `ForceSetDataType` (thanks [FanDjango](/FanDjango))
+ - **FTP**
+   - New: SslStream wrapper to send TLS close notifications for .NET and .NET Core (thanks [FanDjango](/FanDjango))
+   - Change: SSL Closure Alert is now always sent when a stream is terminated (thanks [FanDjango](/FanDjango))
+   - Change: Make SSL Shutdown independant of `Config.DisconnectWithShutdown` (thanks [FanDjango](/FanDjango))
+   - Change: `GetReply` redesign: New mode to exhaustively read all `NOOP` replies (thanks [FanDjango](/FanDjango))
+ - **Logging**
+   - New: Verbose file sizes logged during file upload/download (thanks [FanDjango](/FanDjango))
+   - New: FluentFTP version logged after connection (thanks [FanDjango](/FanDjango))
+   - New: `GetReply` redesign: Verbose logging for `NOOP` commands (thanks [FanDjango](/FanDjango))
+ - **Z/OS**
+   - New: IBM OS/400: Support blanks in filename and add unit test cases (thanks [FanDjango](/FanDjango))
+ - **Tests**
+   - New: Support for Bftpd integration test server (thanks [FanDjango](/FanDjango))
+   - New: Support for ProFTPD integration test server (thanks [FanDjango](/FanDjango))
+   - New: Support for glFTPd integration test server (thanks [FanDjango](/FanDjango))
+   - New: Support for FileZilla integration test server (thanks [FanDjango](/FanDjango))
+   - New: Redesigned VsFTPd integration test server (thanks [FanDjango](/FanDjango))
+   - New: Ability to run test server containers as FTP or FTPS servers (thanks [FanDjango](/FanDjango))
+   - Fix: Cleanup and improve all Dockerfiles and significantly reduce image size (thanks [FanDjango](/FanDjango))
+
+#### 41.0.0
+ - Please read the [Migration Guide](https://github.com/robinrodricks/FluentFTP/wiki/v40-Migration-Guide) for help migrating to the new version!
+ - **API**
+   - New: `EmptyDirectory` API to delete files but leave top-level directory intact (thanks [FanDjango](/FanDjango))
+ - **FTPS**
+   - Fix: Disable TLS 1.3 as it causes many complex networking issues during data transfer
+   - Fix: Unified system to handle permanent failures during `AutoConnect`
+   - Fix: Throw `FtpProtocolUnsupportedException` if the FTP server is forcing TLS 1.3 connections
+   - Fix: Disable SSL Buffering on control connection to improve `NOOP` handling (thanks [FanDjango](/FanDjango))
+   - Fix: Send an additional `NOOP` command after uploading files to resolve issues (thanks [FanDjango](/FanDjango))
+ - **FTP**
+   - Fix: Log messages pertaining to stale data are improved (thanks [FanDjango](/FanDjango))
+   - New: Log the TLS protocol used after making a successful FTPS connection (thanks [FanDjango](/FanDjango))
+   - Fix: Correctly forward `CancellationToken` within `DownloadFile`, `UploadFile`, `TransferDirectory`, `DeleteFile`, `OpenRead`, `OpenAppend` (thanks [jnyrup](/jnyrup))
+   - Fix: Optimize `SIZE` command usage for `UploadFile` in `NoCheck` and `OverWrite` modes (thanks [FanDjango](/FanDjango))
+   - Fix: Allow reusing the `ActivePorts` in FTP Active connection mode (thanks [FanDjango](/FanDjango))
+ - **Z/OS**
+   - New: Add `LIST` functionality for z/OS JES subsystem (thanks [FanDjango](/FanDjango))
+   - New: Switch to using `LISTLEVEL 2` in `GetListing` for more accurate filesizes (thanks [FanDjango](/FanDjango))
+   - New: Improve unit test cases for the z/OS file listing parser tests (thanks [FanDjango](/FanDjango))
+ - **Proxies**
+   - New: Support multiple modes of authentication for SOCKS proxies: GSSAPI, UsernamePassword (thanks [jnyrup](/jnyrup))
+   - New: Throw `MissingMethodException` if cannot negotiate an authentication method for SOCKS proxies (thanks [jnyrup](/jnyrup))
+
+#### 40.0.0
+ - Please read the [Migration Guide](https://github.com/robinrodricks/FluentFTP/wiki/v40-Migration-Guide) for help migrating to the new version!
+ - Special thanks to Robin Rodricks, Michael Stiemke and Jonas Nyrup for this release!
+ - **Constructor API**
+   - New: 4 new FTP client constructors that accept FTP host, credentials, config and logger
+   - Remove extraneous constructors because properties can be used instead
+ - **Asynchronous API**
+   - New: Split main FTP client classes into `FtpClient` and `AsyncFtpClient`
+   - New: Split main FTP client interfaces into `IFtpClient` and `IAsyncFtpClient`
+   - New: Split common FTP functionality into `BaseFtpClient`
+   - New: Drop `Async` suffix for all async FTP methods in `AsyncFtpClient`
+ - **Config API**
+   - New: Remove all config settings from FtpClient and move it into `client.Config` object
+   - New: Dedicated class to hold config settings `FtpConfig` to cleanup client API
+ - **Logging API**
+   - New: Remove `client.OnLogEvent` and `FtpTrace` system
+   - New: Add logger system `client.Logger` using industry-standard `ILogger` interface
+   - New: Add Nuget dependency `Microsoft.Extensions.Logging.Abstractions` v2.1.0
+   - Renamed: Legacy logging callback `OnLogEvent` is now renamed to `LegacyLogger`
+   - Renamed: Logging settings: `LogIP` renamed to `LogHost`
+   - Remove logging setting `LogFunctions` as it is always enabled
+ - **FTP Proxies**
+   - New: Split FTP proxy classes into `FtpClient*Proxy` and `AsyncFtpClient*Proxy`
+   - New: FTP proxy classes moved into `FluentFTP.Proxy.SyncProxy` and `FluentFTP.Proxy.AsyncProxy` NS
+   - New: FTP proxy classes with fully async implementations
+   - Fix: Properly override `HandshakeAsync` in async FTP proxies (thanks [jnyrup](/jnyrup))
+ - **Organization**
+   - Completely redesign the FTP client code organization and structure
+   - Update all tests and examples to use the new API and `AsyncFtpClient`
+   - Hide all internally-used functions behind the interface `IInternalFtpClient`
+   - Code style standardization and use new C# language constructs (thanks [jnyrup](/jnyrup))
+   - Add styling rules to `.editorconfig` to prevent using IDE defaults (thanks [jnyrup](/jnyrup))
+ - **Modernization**
+   - Drop support for .NET Standard 1.2, 1.4 and .NET 2.0, 3.5, 4.0 and 4.5
+   - Add support for .NET 4.6.2 and 4.7.2
+   - Remove conditional compilation statements for unsupported platforms
+   - Remove uncommon static methods `FtpClient.Connect` and `FtpClient.GetPublicIP`
+   - Remove uncommon method `DereferenceLink` and `DereferenceLinkAsync`
+   - Remove uncommon properties `QuickTransferLimit`, `MaximumDereferenceCount`, `EnableThreadSafeDataConnections`, `PlainTextEncryption`
+   - Remove uncommon feature `FtpListOption.DerefLinks`
+   - Remove obsolete hashing commands `GetHashAlgorithm`, `SetHashAlgorithm`, `GetHash`, etc
+   - Remove obsolete async pattern using `IAsyncResult`
+   - Fix: Forward cancellation token in UploadDirectory and Proxy HandshakeAsync (thanks [jnyrup](/jnyrup))
+   - Fix: Parity in sync/async implementations of `Authenticate` (thanks [FanDjango](/FanDjango))
+   - Fix: Improve masking out support for removing sensitive usernames from FTP logs
+   - Fix: Change all public fields to properties in classes: `FtpListParser`, `FtpClientState`, `FtpFxpSession`, `FtpFxpSessionAsync`, `FtpListItem`, `FtpProfile`, `FtpResult`
+   - Fix: Change all public fields to properties in rules: `FtpFileExtensionRule`, `FtpFileNameRegexRule`, `FtpFileNameRule`, `FtpFolderNameRegexRule`, `FtpFolderNameRule`, `FtpSizeRule`
+ - **Server support**
+   - Move all IBM zOS logic into the `IBMzOSFtpServer` server handler (thanks [FanDjango](/FanDjango))
+   - Move all OpenVMS logic into the `OpenVmsServer` server handler (thanks [FanDjango](/FanDjango))
+   - Fix: z/OS: Handle z/OS `GetListing` single line outputs (thanks [FanDjango](/FanDjango))
+
 #### 39.4.0
  - New: Add `SslProtocolActive` property to retrieve the negotiated SSL/TLS protocol version
  - Fix: z/OS: Improve server handling for absolute path calculation (thanks [FanDjango](/FanDjango))

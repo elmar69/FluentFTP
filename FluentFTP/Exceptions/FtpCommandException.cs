@@ -1,14 +1,14 @@
 ﻿using System;
-#if !CORE
+#if NETFRAMEWORK
 using System.Runtime.Serialization;
 #endif
 
-namespace FluentFTP {
+namespace FluentFTP.Exceptions {
 
 	/// <summary>
 	/// Exception triggered on FTP command failures
 	/// </summary>
-#if !CORE
+#if NETFRAMEWORK
 	[Serializable]
 #endif
 	public class FtpCommandException : FtpException {
@@ -45,6 +45,11 @@ namespace FluentFTP {
 		}
 
 		/// <summary>
+		/// Setup the error message string
+		/// </summary>
+		public override string Message => $"Code: {CompletionCode} Message: {base.Message}";
+
+		/// <summary>
 		/// Initializes a new instance of a FtpResponseException
 		/// </summary>
 		/// <param name="code">Status code</param>
@@ -62,7 +67,7 @@ namespace FluentFTP {
 			: this(reply.Code, reply.ErrorMessage) {
 		}
 
-#if !CORE
+#if NETFRAMEWORK
 		/// <summary>
 		/// Must be implemented so every Serializer can Deserialize the Exception
 		/// </summary>

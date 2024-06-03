@@ -21,17 +21,21 @@ namespace FluentFTP.Xunit.Docker {
 		public virtual ITestcontainersBuilder<TestcontainersContainer> Configure(ITestcontainersBuilder<TestcontainersContainer> builder) {
 			return builder;
 		}
-		
-		public virtual TestcontainersContainer Build() {
-			
+
+		public virtual TestcontainersContainer Build(string useStream, bool useSsl = false) {
+
 			var builder = new TestcontainersBuilder<TestcontainersContainer>()
 				.WithImage(DockerImage)
-				.WithName(ServerName)
+				.WithName(ServerName + "_" + useStream)
 				.WithPortBinding(21);
 
 			builder = this.Configure(builder);
 
 			builder = builder.WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(21));
+
+			if (useSsl) {
+				builder = builder.WithEnvironment("USE_SSL", "YES");
+			}
 
 			var container = builder.Build();
 

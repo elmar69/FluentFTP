@@ -5,18 +5,14 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using FluentFTP.Client.BaseClient;
 
-#if NET45
-using System.Threading.Tasks;
-
-#endif
 namespace FluentFTP.Helpers.Parsers {
 	internal static class MachineListParser {
-
 		/// <summary>
 		/// Checks if the given listing is a valid Machine Listing item
 		/// </summary>
-		public static bool IsValid(FtpClient client, string[] records) {
+		public static bool IsValid(BaseFtpClient client, string[] records) {
 			return records[0].ContainsCI("type=");
 		}
 
@@ -27,7 +23,7 @@ namespace FluentFTP.Helpers.Parsers {
 		/// <param name="capabilities">Server capabilities</param>
 		/// <param name="client">The FTP client</param>
 		/// <returns>FtpListItem if the item is able to be parsed</returns>
-		public static FtpListItem Parse(string record, List<FtpCapability> capabilities, FtpClient client) {
+		public static FtpListItem Parse(string record, List<FtpCapability> capabilities, BaseFtpClient client) {
 			var item = new FtpListItem();
 			Match m;
 
@@ -91,17 +87,18 @@ namespace FluentFTP.Helpers.Parsers {
 			return item;
 		}
 
+		private const DateTimeStyles DateTimeStyle = DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal;
 		/// <summary>
 		/// Parses the date modified field from MLSD/MLST format listings
 		/// </summary>
-		private static void ParseDateTime(string record, FtpListItem item, FtpClient client) {
+		private static void ParseDateTime(string record, FtpListItem item, BaseFtpClient client) {
 			Match m;
 			if ((m = Regex.Match(record, "modify=(?<modify>.+?);", RegexOptions.IgnoreCase)).Success) {
-				item.Modified = m.Groups["modify"].Value.ParseFtpDate(client);
+				item.Modified = m.Groups["modify"].Value.ParseFtpDate(client, styles: DateTimeStyle);
 			}
 
 			if ((m = Regex.Match(record, "created?=(?<create>.+?);", RegexOptions.IgnoreCase)).Success) {
-				item.Created = m.Groups["create"].Value.ParseFtpDate(client);
+				item.Created = m.Groups["create"].Value.ParseFtpDate(client, styles: DateTimeStyle);
 			}
 		}
 
@@ -110,7 +107,7 @@ namespace FluentFTP.Helpers.Parsers {
 		/// </summary>
 		private static void ParseFileSize(string record, FtpListItem item) {
 			Match m;
-			if ((m = Regex.Match(record, @"size=(?<size>\d+);", RegexOptions.IgnoreCase)).Success) {
+			if ((m = Regex.Match(record, @"size=(?<size>[0-9]+);", RegexOptions.IgnoreCase)).Success) {
 				long size;
 
 				if (long.TryParse(m.Groups["size"].Value, out size)) {
@@ -124,7 +121,7 @@ namespace FluentFTP.Helpers.Parsers {
 		/// </summary>
 		private static void ParsePermissions(string record, FtpListItem item) {
 			Match m;
-			if ((m = Regex.Match(record, @"unix.mode=(?<mode>\d+);", RegexOptions.IgnoreCase)).Success) {
+			if ((m = Regex.Match(record, @"unix.mode=(?<mode>[0-9]+);", RegexOptions.IgnoreCase)).Success) {
 				if (m.Groups["mode"].Value.Length == 4) {
 					item.SpecialPermissions = (FtpSpecialPermissions)int.Parse(m.Groups["mode"].Value[0].ToString());
 					item.OwnerPermissions = (FtpPermission)int.Parse(m.Groups["mode"].Value[1].ToString());

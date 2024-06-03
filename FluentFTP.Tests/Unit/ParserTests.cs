@@ -7,7 +7,7 @@ using Xunit;
 namespace FluentFTP.Tests.Unit {
 	public class ParserTests {
 
-		private static void TestParsing(FtpListParser parser, string path, string[] testValues, FtpListItem[] expectedValues) {
+		private static void TestParsing(FtpListParser parser, string path, string[] testValues, FtpListItem?[]? expectedValues) {
 
 			// code prefix
 			if (expectedValues == null) {
@@ -19,7 +19,7 @@ namespace FluentFTP.Tests.Unit {
 				var test = testValues[i];
 
 				// parse it
-				FtpListItem item = null;
+				FtpListItem? item = null;
 				try {
 					item = parser.ParseSingleLine(path, test, new List<FtpCapability>(), false);
 				}
@@ -41,7 +41,11 @@ namespace FluentFTP.Tests.Unit {
 
 					// test if correct
 					if (item != null) {
-						Assert.Equal(item.ToString(), expectedValues[i].ToString());
+
+						var expectedItem = expectedValues[i]!;
+						Assert.Equal(item.ToString(), expectedItem.ToString());
+						Assert.Equal(item.Modified.Kind, expectedItem.Modified.Kind);
+
 					}
 				}
 
@@ -118,23 +122,23 @@ namespace FluentFTP.Tests.Unit {
 				"Type=file;Size=4096;Modify=19990929011440;Perm=r;Unique=keVO1+bd8; FILE1",
 			};
 
-			var expected = new FtpListItem[]{
+			var expected = new FtpListItem?[]{
 				new FtpListItem("File1-whitespace trailing\t ", -1, FtpObjectType.File, new DateTime(1, 1, 1, 0, 0, 0, 0)),
 				new FtpListItem("\t File2-whitespace leading", -1, FtpObjectType.File, new DateTime(1, 1, 1, 0, 0, 0, 0)),
-				new FtpListItem("File 3 Word Doc", 14718921, FtpObjectType.File, new DateTime(2013, 4, 26, 13, 55, 1, 0)),
+				new FtpListItem("File 3 Word Doc", 14718921, FtpObjectType.File, new DateTime(2013, 4, 26, 13, 55, 1, 0, DateTimeKind.Utc)),
 				null,
 				new FtpListItem("Link Tomato 2", -1, FtpObjectType.Link, new DateTime(1, 1, 1, 0, 0, 0, 0)),
 				new FtpListItem("Link Strawberry 3", -1, FtpObjectType.Link, new DateTime(1, 1, 1, 0, 0, 0, 0)),
-				new FtpListItem("capmux.tar.z", 25730, FtpObjectType.File, new DateTime(1994, 7, 28, 9, 58, 54, 0)),
-				new FtpListItem("hatch.c", 1830, FtpObjectType.File, new DateTime(1994, 9, 16, 5, 56, 48, 0)),
-				new FtpListItem("MacIP-02.txt", 25624, FtpObjectType.File, new DateTime(1995, 10, 3, 16, 53, 42, 0)),
-				new FtpListItem("uar.netbsd.patch", 2154, FtpObjectType.File, new DateTime(1995, 5, 1, 10, 50, 33, 0)),
-				new FtpListItem("iptnnladev.1.0.sit.hqx", 54757, FtpObjectType.File, new DateTime(1995, 11, 5, 10, 17, 54, 0)),
-				new FtpListItem("melbcs.tif", 226546, FtpObjectType.File, new DateTime(1997, 5, 15, 2, 39, 1, 0)),
-				new FtpListItem("tardis.1.6.sit.hqx", 12927, FtpObjectType.File, new DateTime(1996, 10, 25, 13, 56, 2, 0)),
-				new FtpListItem("timelord.1.4.sit.hqx", 17867, FtpObjectType.File, new DateTime(1996, 10, 25, 13, 56, 2, 0)),
-				new FtpListItem("uar.1.2.3.sit.hqx", 224907, FtpObjectType.File, new DateTime(1998, 6, 15, 10, 0, 45, 0)),
-				new FtpListItem("cap60.pl198.tar.gz", 1024990, FtpObjectType.File, new DateTime(1998, 1, 30, 1, 3, 22, 0)),
+				new FtpListItem("capmux.tar.z", 25730, FtpObjectType.File, new DateTime(1994, 7, 28, 9, 58, 54, 0, DateTimeKind.Utc)),
+				new FtpListItem("hatch.c", 1830, FtpObjectType.File, new DateTime(1994, 9, 16, 5, 56, 48, 0, DateTimeKind.Utc)),
+				new FtpListItem("MacIP-02.txt", 25624, FtpObjectType.File, new DateTime(1995, 10, 3, 16, 53, 42, 0, DateTimeKind.Utc)),
+				new FtpListItem("uar.netbsd.patch", 2154, FtpObjectType.File, new DateTime(1995, 5, 1, 10, 50, 33, 0, DateTimeKind.Utc)),
+				new FtpListItem("iptnnladev.1.0.sit.hqx", 54757, FtpObjectType.File, new DateTime(1995, 11, 5, 10, 17, 54, 0, DateTimeKind.Utc)),
+				new FtpListItem("melbcs.tif", 226546, FtpObjectType.File, new DateTime(1997, 5, 15, 2, 39, 1, 0, DateTimeKind.Utc)),
+				new FtpListItem("tardis.1.6.sit.hqx", 12927, FtpObjectType.File, new DateTime(1996, 10, 25, 13, 56, 2, 0, DateTimeKind.Utc)),
+				new FtpListItem("timelord.1.4.sit.hqx", 17867, FtpObjectType.File, new DateTime(1996, 10, 25, 13, 56, 2, 0, DateTimeKind.Utc)),
+				new FtpListItem("uar.1.2.3.sit.hqx", 224907, FtpObjectType.File, new DateTime(1998, 6, 15, 10, 0, 45, 0, DateTimeKind.Utc)),
+				new FtpListItem("cap60.pl198.tar.gz", 1024990, FtpObjectType.File, new DateTime(1998, 1, 30, 1, 3, 22, 0, DateTimeKind.Utc)),
 				null,
 				null,
 				null,
@@ -151,27 +155,27 @@ namespace FluentFTP.Tests.Unit {
 				new FtpListItem("file5", -1, FtpObjectType.File, new DateTime(1, 1, 1, 0, 0, 0, 0)),
 				new FtpListItem("file6", -1, FtpObjectType.File, new DateTime(1, 1, 1, 0, 0, 0, 0)),
 				new FtpListItem("empty", -1, FtpObjectType.Directory, new DateTime(1, 1, 1, 0, 0, 0, 0)),
-				new FtpListItem("character-sets", 44242, FtpObjectType.File, new DateTime(1999, 2, 17, 23, 4, 0, 0)),
-				new FtpListItem("operating-system-names", 1947, FtpObjectType.File, new DateTime(1999, 2, 9, 21, 56, 0, 0)),
-				new FtpListItem("media-types", 30249, FtpObjectType.File, new DateTime(1999, 2, 18, 3, 27, 0, 0)),
-				new FtpListItem("windows-1251", 1234, FtpObjectType.File, new DateTime(1998, 9, 3, 2, 4, 0, 0)),
-				new FtpListItem("tis-620", 4557, FtpObjectType.File, new DateTime(1998, 9, 22, 0, 14, 0, 0)),
-				new FtpListItem("ibm775", 801, FtpObjectType.File, new DateTime(1997, 3, 24, 13, 0, 0, 0)),
-				new FtpListItem("ibm866", 552, FtpObjectType.File, new DateTime(1997, 3, 20, 13, 0, 0, 0)),
-				new FtpListItem("windows-1258", 922, FtpObjectType.File, new DateTime(1996, 5, 5, 14, 0, 0, 0)),
-				new FtpListItem("default", 2391, FtpObjectType.File, new DateTime(1998, 3, 9, 13, 0, 0, 0)),
-				new FtpListItem("tags", 943, FtpObjectType.File, new DateTime(1998, 3, 9, 13, 0, 0, 0)),
-				new FtpListItem("navajo", 870, FtpObjectType.File, new DateTime(1997, 10, 26, 13, 0, 0, 0)),
-				new FtpListItem("no-bok", 699, FtpObjectType.File, new DateTime(1995, 9, 11, 14, 0, 0, 0)),
-				new FtpListItem("FILE2", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0)),
-				new FtpListItem("file3", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0)),
-				new FtpListItem("FILE3", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0)),
-				new FtpListItem("file1", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0)),
-				new FtpListItem("file2", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0)),
-				new FtpListItem("File3", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0)),
-				new FtpListItem("File1", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0)),
-				new FtpListItem("File2", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0)),
-				new FtpListItem("FILE1", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0)),
+				new FtpListItem("character-sets", 44242, FtpObjectType.File, new DateTime(1999, 2, 17, 23, 4, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("operating-system-names", 1947, FtpObjectType.File, new DateTime(1999, 2, 9, 21, 56, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("media-types", 30249, FtpObjectType.File, new DateTime(1999, 2, 18, 3, 27, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("windows-1251", 1234, FtpObjectType.File, new DateTime(1998, 9, 3, 2, 4, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("tis-620", 4557, FtpObjectType.File, new DateTime(1998, 9, 22, 0, 14, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("ibm775", 801, FtpObjectType.File, new DateTime(1997, 3, 24, 13, 0, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("ibm866", 552, FtpObjectType.File, new DateTime(1997, 3, 20, 13, 0, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("windows-1258", 922, FtpObjectType.File, new DateTime(1996, 5, 5, 14, 0, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("default", 2391, FtpObjectType.File, new DateTime(1998, 3, 9, 13, 0, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("tags", 943, FtpObjectType.File, new DateTime(1998, 3, 9, 13, 0, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("navajo", 870, FtpObjectType.File, new DateTime(1997, 10, 26, 13, 0, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("no-bok", 699, FtpObjectType.File, new DateTime(1995, 9, 11, 14, 0, 0, 0, DateTimeKind.Utc)),
+				new FtpListItem("FILE2", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0, DateTimeKind.Utc)),
+				new FtpListItem("file3", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0, DateTimeKind.Utc)),
+				new FtpListItem("FILE3", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0, DateTimeKind.Utc)),
+				new FtpListItem("file1", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0, DateTimeKind.Utc)),
+				new FtpListItem("file2", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0, DateTimeKind.Utc)),
+				new FtpListItem("File3", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0, DateTimeKind.Utc)),
+				new FtpListItem("File1", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0, DateTimeKind.Utc)),
+				new FtpListItem("File2", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0, DateTimeKind.Utc)),
+				new FtpListItem("FILE1", 4096, FtpObjectType.File, new DateTime(1999, 9, 29, 1, 14, 40, 0, DateTimeKind.Utc)),
 			};
 
 			TestParsing(parser, "/", sample, expected);
@@ -194,9 +198,6 @@ namespace FluentFTP.Tests.Unit {
 				"drwxr-xr-x 133 user1  user1     4096 Jun 25 16:26 sys.6460",
 				"dr-xr-xr-x   2 root     other        512 Apr  8  1994 File001.xml dir",
 				"dr-xr-xr-x   2 root                  512 Apr  8  1994 File003.xml dir",
-				"lrwxrwxrwx   1 root     other          7 Jan 25 00:17 File004.xml link -> usr/bin",
-				"d [R----F--] john            512       Jan 16 18:53    Folder-Videos dir",
-				"- [R----F--] jacob             214059       Oct 20 15:27    File-2.txt file",
 				"-------r--         326  1391972  1392298 Nov 22  1995 File-3.txt file",
 				"drwxrwxr-x               folder        2 May 10  1996 Folder-Audio dir",
 				"-rw-r--r--   1 group domain user 531 Jan 29 03:26 File-9.txt file",
@@ -221,7 +222,7 @@ namespace FluentFTP.Tests.Unit {
 				"-r-xr-xr-x   2 root  root  96 2004.07.15   NonEnglish-9.mp4 file",
 			};
 
-			var expected = new FtpListItem[]{
+			var expected = new FtpListItem?[]{
 
 				// OK
 				new FtpListItem(".", 512, FtpObjectType.Directory, new DateTime(2011, 9, 27, 0, 0, 0, 0)),
@@ -229,12 +230,9 @@ namespace FluentFTP.Tests.Unit {
 				new FtpListItem("data.0000", 9, FtpObjectType.Link, new DateTime(2011, 9, 27, 0, 0, 0, 0)),
 				new FtpListItem("data.6460", 512, FtpObjectType.Directory, new DateTime(2012, 6, 29, 0, 0, 0, 0)),
 				new FtpListItem("sys.0000", 8, FtpObjectType.Link, new DateTime(2011, 9, 27, 0, 0, 0, 0)),
-				new FtpListItem("sys.6460", 4096, FtpObjectType.Directory, new DateTime(2022, 6, 25, 16, 26, 0, 0)),
+				new FtpListItem("sys.6460", 4096, FtpObjectType.Directory, new DateTime(2023, 6, 25, 16, 26, 0, 0)),
 				new FtpListItem("File001.xml dir", 512, FtpObjectType.Directory, new DateTime(1994, 4, 8, 0, 0, 0, 0)),
 				new FtpListItem("File003.xml dir", 512, FtpObjectType.Directory, new DateTime(1994, 4, 8, 0, 0, 0, 0)),
-				new FtpListItem("File004.xml link", 7, FtpObjectType.Link, new DateTime(2022, 1, 25, 0, 17, 0, 0)),
-				new FtpListItem("Folder-Videos dir", 512, FtpObjectType.Directory, new DateTime(2022, 1, 16, 18, 53, 0, 0)),
-				new FtpListItem("File-2.txt file", 214059, FtpObjectType.File, new DateTime(2021, 10, 20, 15, 27, 0, 0)),
 				new FtpListItem("File-3.txt file", 1392298, FtpObjectType.File, new DateTime(1995, 11, 22, 0, 0, 0, 0)),
 				new FtpListItem("Folder-Audio dir", 2, FtpObjectType.Directory, new DateTime(1996, 5, 10, 0, 0, 0, 0)),
 				new FtpListItem("Jan 29 03:26 File-9.txt file", 0, FtpObjectType.File, new DateTime(1, 1, 1, 0, 0, 0, 0)),
@@ -265,6 +263,8 @@ namespace FluentFTP.Tests.Unit {
 			parser.Init(FtpOperatingSystem.Windows);
 
 			var sample = new[] {
+				"03-10-21 11:12       <DIR> System Volume Information",
+				"12-03-20 13:40       <DIR> FCDATA01",
 				"03-07-13  10:02AM                  901 File01.xml",
 				"03-07-13  10:03AM                  921 File02.xml",
 				"03-07-13  10:04AM                  904 File03.xml",
@@ -283,7 +283,9 @@ namespace FluentFTP.Tests.Unit {
 				"2013-09-02  18:48       <DIR>          Folder16",
 				"2013-09-02  19:06                9,730 File17",
 			};
-			var expected = new FtpListItem[]{
+			var expected = new FtpListItem?[]{
+				new FtpListItem("System Volume Information", 0, FtpObjectType.Directory, new DateTime(2021,3, 10, 11, 12, 0, 0)),
+				new FtpListItem("FCDATA01", 0, FtpObjectType.Directory, new DateTime(2020, 12, 3, 13, 40, 0, 0)),
 				new FtpListItem("File01.xml", 901, FtpObjectType.File, new DateTime(2013, 3, 7, 10, 2, 0, 0)),
 				new FtpListItem("File02.xml", 921, FtpObjectType.File, new DateTime(2013, 3, 7, 10, 3, 0, 0)),
 				new FtpListItem("File03.xml", 904, FtpObjectType.File, new DateTime(2013, 3, 7, 10, 4, 0, 0)),
@@ -340,7 +342,7 @@ namespace FluentFTP.Tests.Unit {
 				//"junk-file;1       17-JUN-1994 17:25:37     6308/13     (RWED,RWED,R,)",
 			};
 
-			var expected = new FtpListItem[]{
+			var expected = new FtpListItem?[]{
 				new FtpListItem("411_4114.TXT", 11, FtpObjectType.File, new DateTime(2012, 3, 21, 15, 17, 0, 0)),
 				new FtpListItem("ACT_CC_NAME_4114.TXT", 30, FtpObjectType.File, new DateTime(2012, 3, 21, 15, 17, 0, 0)),
 				new FtpListItem("ACT_CC_NUM_4114.TXT", 30, FtpObjectType.File, new DateTime(2012, 3, 21, 15, 17, 0, 0)),
@@ -384,9 +386,10 @@ namespace FluentFTP.Tests.Unit {
 				"CFT                                     *MEM  ASKET7.FILE/ASKET7.MBR",
 				"QSYSOPR         28672 01/12/17 20:08:04 *FILE FPKI45POK5.FILE",
 				"QSYSOPR                                 *MEM FPKI45POK5.FILE/FPKI45POK5.MBR",
+				"TESTUSR         12345 01/12/18 18:34:01 *STMF B0001234567 K",
 			};
 
-			var expected = new FtpListItem[]{
+			var expected = new FtpListItem?[]{
 				new FtpListItem("ANTHONY1.FILE", 45056, FtpObjectType.File, new DateTime(2014, 12, 4, 14, 19, 31, 0)),
 				new FtpListItem("ANTHONY1.FILE/ANTHONY1.MBR", 0, FtpObjectType.File, new DateTime(1, 1, 1, 0, 0, 0, 0)),
 				new FtpListItem("AMANDA3.FILE", 36864, FtpObjectType.File, new DateTime(2015, 11, 28, 15, 19, 30, 0)),
@@ -395,6 +398,7 @@ namespace FluentFTP.Tests.Unit {
 				new FtpListItem("ASKET7.FILE/ASKET7.MBR", 0, FtpObjectType.File, new DateTime(1, 1, 1, 0, 0, 0, 0)),
 				new FtpListItem("FPKI45POK5.FILE", 28672, FtpObjectType.File, new DateTime(2017, 12, 1, 20, 8, 4, 0)),
 				new FtpListItem("FPKI45POK5.FILE/FPKI45POK5.MBR", 0, FtpObjectType.File, new DateTime(1, 1, 1, 0, 0, 0, 0)),
+				new FtpListItem("B0001234567 K", 12345, FtpObjectType.File, new DateTime(2018, 12, 1, 18, 34, 1, 0)),
 			};
 
 			TestParsing(parser, "/", sample, expected);
@@ -417,7 +421,7 @@ namespace FluentFTP.Tests.Unit {
 				"FILE4      101            16384 15-Aug-14 11:44:56 244, 10 \"extra4\"",
 			};
 
-			var expected = new FtpListItem[]{
+			var expected = new FtpListItem?[]{
 				null,
 				new FtpListItem("FILE1", 528, FtpObjectType.File, new DateTime(635251332780000000)),
 				new FtpListItem("FILE2", 528, FtpObjectType.File, new DateTime(635278980780000000)),
@@ -430,8 +434,7 @@ namespace FluentFTP.Tests.Unit {
 		}
 
 		[Fact]
-		public void IBMzOSMVS_HFS()
-		{
+		public void IBMzOSMVS_HFS() {
 			var parser = new FtpListParser(new FtpClient());
 			parser.Init(FtpOperatingSystem.IBMzOS, FtpParser.IBMzOS);
 
@@ -445,13 +448,22 @@ namespace FluentFTP.Tests.Unit {
 				"-rw-rw----   1 YNSAS    SYS1       47227 Jun  7  2021 test.txt",
 			};
 
-			TestParsing(parser, "/", sample, null);
+			var expected = new FtpListItem?[]{
+				null,
+				new FtpListItem("downloads", 8192, FtpObjectType.Directory, new DateTime(2015, 10, 19, 0, 0, 0, 0)),
+				new FtpListItem("p5zipfile", 8192, FtpObjectType.Directory, new DateTime(2015, 10, 19, 0, 0, 0, 0)),
+				new FtpListItem("t.out", 2723828, FtpObjectType.File, new DateTime(2021, 12, 6, 0, 0, 0, 0)),
+				new FtpListItem("test.bin", 132480, FtpObjectType.File, new DateTime(2022, 1, 2, 0, 0, 0, 0)),
+				new FtpListItem("test.tst", 6209406, FtpObjectType.File, new DateTime(2021, 5, 29, 0, 0, 0, 0)),
+				new FtpListItem("test.txt", 47227, FtpObjectType.File, new DateTime(2021, 6, 7, 0, 0, 0, 0)),
+			};
+
+			TestParsing(parser, "/", sample, expected);
 
 		}
 
 		[Fact]
-		public void IBMzOSMVS_PSPO()
-		{
+		public void IBMzOSMVS_PSPO() {
 			var parser = new FtpListParser(new FtpClient());
 			parser.Init(FtpOperatingSystem.IBMzOS, FtpParser.IBMzOS);
 
@@ -461,13 +473,18 @@ namespace FluentFTP.Tests.Unit {
 				"YNSABH 3390   2022/02/18  1+++++  VBS  32767 27966  PS  $.BDATA.XBB",
 			};
 
-			TestParsing(parser, "/", sample, null);
+			var expected = new FtpListItem?[]{
+				null,
+				new FtpListItem("$.ADATA.XAA", 849960, FtpObjectType.File, new DateTime(2020, 1, 3, 0, 0, 0, 0)),
+				new FtpListItem("$.BDATA.XBB", 950664167424, FtpObjectType.File, new DateTime(2022, 2, 18, 0, 0, 0, 0)),
+			};
+
+			TestParsing(parser, "/", sample, expected);
 
 		}
 
 		[Fact]
-		public void IBMzOSMVS_Member()
-		{
+		public void IBMzOSMVS_Member() {
 			var parser = new FtpListParser(new FtpClient());
 			parser.Init(FtpOperatingSystem.IBMzOS, FtpParser.IBMzOS);
 
@@ -476,13 +493,15 @@ namespace FluentFTP.Tests.Unit {
 				"$2CPF1    01.01 2001/10/18 2001/10/18 11:58    29    29     0 QFX3076",
 			};
 
+			// Cannot test expected as this szenario needs an internal XDSS command to get LRECL
+			// for size calculation
+
 			TestParsing(parser, "/", sample, null);
 
 		}
 
 		[Fact]
-		public void IBMzOSMVS_MemberU()
-		{
+		public void IBMzOSMVS_MemberU() {
 			var parser = new FtpListParser(new FtpClient());
 			parser.Init(FtpOperatingSystem.IBMzOS, FtpParser.IBMzOS);
 
@@ -492,7 +511,13 @@ namespace FluentFTP.Tests.Unit {
 				"EAGRTPRC  005F48   000011 EAGRTALT 00 FO             RN RU            31    ANY",
 			};
 
-			TestParsing(parser, "/", sample, null);
+			var expected = new FtpListItem?[]{
+				null,
+				new FtpListItem("EAGKCPT", 88, FtpObjectType.File, new DateTime(1 ,1, 1, 0, 0, 0, 0)),
+				new FtpListItem("EAGRTPRC", 24392, FtpObjectType.File, new DateTime(1, 1, 1, 0, 0, 0, 0)),
+			};
+
+			TestParsing(parser, "/", sample, expected);
 
 		}
 
@@ -508,7 +533,10 @@ namespace FluentFTP.Tests.Unit {
 				" 1123 DIR  A    10-05-100  23:38  27-Dir8 dir",
 			};
 
-			TestParsing(parser, "/", sample, null);
+			var expected = new FtpListItem?[]{
+			};
+
+			TestParsing(parser, "/", sample, expected);
 		}*/
 	}
 }

@@ -15,8 +15,8 @@ namespace FluentFTP {
 				int code;
 
 				if (Code != null && Code.Length > 0 &&
-				    int.TryParse(Code[0].ToString(), out code)) {
-					return (FtpResponseType) code;
+					int.TryParse(Code[0].ToString(), out code)) {
+					return (FtpResponseType)code;
 				}
 
 				return FtpResponseType.None;
@@ -88,7 +88,7 @@ namespace FluentFTP {
 					return message;
 				}
 
-				if (InfoMessages != null && InfoMessages.Length > 0) {
+				if (!string.IsNullOrEmpty(InfoMessages)) {
 					foreach (var s in InfoMessages.Split('\n')) {
 						var m = Regex.Replace(s, "^[0-9]{3}-", "");
 						message += m.Trim() + "; ";
@@ -100,5 +100,10 @@ namespace FluentFTP {
 				return message;
 			}
 		}
+
+		/// <summary>
+		/// Stores the command that produced this reply (if any)
+		/// </summary>
+		public string Command { get; set; }
 	}
 }
